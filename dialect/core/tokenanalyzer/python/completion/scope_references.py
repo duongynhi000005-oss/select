@@ -585,6 +585,15 @@ def _bare(node) -> bool:
     return isinstance(node, exp.Identifier) and not node.quoted
 
 
+def _alias_of(expr):
+    """The alias naming a virtual table: on a LATERAL or VALUES itself, on the
+    subquery or CTE around any other body."""
+    alias = expr.args.get("alias")
+    if alias is None and expr.parent is not None:
+        alias = expr.parent.args.get("alias")
+    return alias
+
+
 def _alias_bare(expression, alias: str) -> bool:
     """Whether the alias a FROM entry of this statement gives was written bare."""
     for node in expression.find_all(exp.TableAlias):
@@ -749,7 +758,7 @@ def _build_virtual_table(
         "schema":             "",
         "database":           "",
         "alias":              name,
-        "bare":               _bare(expr.parent.args.get("alias")) if expr.parent else False,
+        "bare":               _bare(_alias_of(expr)),
         "is_virtual":         True,
         # A virtual table is named one level out from the body that defines
         # it, which is the level a caret can reach it at.

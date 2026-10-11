@@ -274,6 +274,14 @@ func GetCompletionTestCases(defaultSchema, identifierQuote string) []CompletionT
 			},
 		},
 		{
+			Name: "a mixed-case VALUES alias declared unquoted",
+			SQL:  "SELECT * FROM (VALUES (1)) AS V(Xa) WHERE |",
+			Expected: []CompletionTestExpectation{
+				{Type: CandidateTypeTable, Text: "V"},
+				{Type: CandidateTypeColumn, Text: "Xa"},
+			},
+		},
+		{
 			Name: "CTE column completion",
 			SQL:  "WITH cte1 AS (SELECT * FROM t1) SELECT cte1.| FROM cte1",
 			Expected: []CompletionTestExpectation{
@@ -870,6 +878,17 @@ func GetCompletionCasesPostgreSQLAndMySQL(defaultSchema, identifierQuote string)
 			Expected: []CompletionTestExpectation{
 				{Type: CandidateTypeColumn, Text: "c1"},
 				{Type: CandidateTypeColumn, Text: "c3"},
+			},
+		},
+		{
+			Name: "a mixed-case LATERAL alias declared unquoted",
+			SQL:  "SELECT * FROM t1, LATERAL (SELECT 1 AS Xa) AS Lx WHERE |",
+			Expected: []CompletionTestExpectation{
+				{Type: CandidateTypeTable, Text: "t1"},
+				{Type: CandidateTypeTable, Text: "Lx"},
+				{Type: CandidateTypeColumn, Text: "c1"},
+				{Type: CandidateTypeColumn, Text: "c2"},
+				{Type: CandidateTypeColumn, Text: "Xa"},
 			},
 		},
 		// SQLite folds a quoted name's case too, so only these two keep it.
