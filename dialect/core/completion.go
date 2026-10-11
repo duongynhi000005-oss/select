@@ -3,7 +3,6 @@ package core
 import (
 	"fmt"
 	"strings"
-	"unicode"
 )
 
 // CandidateType represents the type of a completion suggestion
@@ -131,11 +130,11 @@ func (cs *CompletionStrategy) CompleteFromSQL(
 	columnAliases []ColumnAlias,
 	reservedKeywords map[string]bool,
 ) []Candidate {
+	cs.sql = sql
 	if ctx.Targets&CompletionTargetSetting != 0 {
 		return cs.completeSettings(meta)
 	}
 
-	cs.sql = sql
 	caretOffset := charOffsetFromLineCol(sql, caretLine, caretCol)
 	caretQuoted := caretOffset > 0 && caretOffset < len(sql) && sql[caretOffset] == '"'
 	nestingLevel := ctx.CaretNesting
@@ -167,6 +166,20 @@ func (cs *CompletionStrategy) CompleteFromSQL(
 		// beside them must not turn the catalogue off.
 		wantsEveryKind := ctx.Targets&CompletionTargetAll == CompletionTargetAll
 		isAllMode := keywordIsAllMode || (wantsEveryKind && len(inScopeRefs) == 0 && len(inScopeCtes) == 0)
+
+		// Keyed as the candidates spell it: a raw name folds where its quoted
+		// form keeps its case.
+		seen := map[string]bool{}
+		addTable := func(name string) {
+			if name == "" {
+				return
+			}
+			text := cs.quote(name, caretQuoted, reservedKeywords)
+			if key := cs.dialect.NormalizeIdentifier(text); !seen[key] {
+				tables = append(tables, Candidate{Type: CandidateTypeTable, Text: text})
+				seen[key] = true
+			}
+		}
 
 		if ctx.SchemaFilter != "" {
 			if !isAllMode && len(inScopeRefs) > 0 {
@@ -205,18 +218,6 @@ func (cs *CompletionStrategy) CompleteFromSQL(
 
 		// No schema filter
 		{
-			seen := map[string]bool{}
-			addTable := func(name string) {
-				if name == "" {
-					return
-				}
-				text := cs.quote(name, caretQuoted, reservedKeywords)
-				if key := cs.dialect.NormalizeIdentifier(text); !seen[key] {
-					tables = append(tables, Candidate{Type: CandidateTypeTable, Text: text})
-					seen[key] = true
-				}
-			}
-
 			for _, r := range inScopeRefs {
 				name := r.Alias
 				if name == "" {
@@ -249,23 +250,8 @@ func (cs *CompletionStrategy) CompleteFromSQL(
 			}
 		}
 	addCtes:
-		{
-			seen := map[string]bool{}
-			for _, t := range tables {
-				seen[cs.dialect.NormalizeIdentifier(t.Text)] = true
-			}
-			for _, vt := range inScopeCtes {
-				if vt.Table == "" {
-					continue
-				}
-				// Compared as the candidates spell it: a raw name folds where
-				// its quoted form keeps its case.
-				text := cs.quote(vt.Table, caretQuoted, reservedKeywords)
-				if key := cs.dialect.NormalizeIdentifier(text); !seen[key] {
-					tables = append(tables, Candidate{Type: CandidateTypeTable, Text: text})
-					seen[key] = true
-				}
-			}
+		for _, vt := range inScopeCtes {
+			addTable(vt.Table)
 		}
 	doneWithTables:
 	}
@@ -336,8 +322,7 @@ func bareWordEdge(sql string, i int) bool {
 		return false
 	}
 	c := sql[i]
-	return c == '_' || c == '$' || c == '"' || c == '`' || c == '[' || c == ']' || c == '\'' ||
-		c >= 0x80 || unicode.IsLetter(rune(c)) || unicode.IsDigit(rune(c))
+	return IsIdentifierChar(rune(c)) || c >= 0x80 || strings.IndexByte("$\"`[]'", c) >= 0
 }
 
 // completeTypes are the types this database holds: the dialect's own, which
