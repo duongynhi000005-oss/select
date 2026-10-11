@@ -397,7 +397,6 @@ func GetCompletionTestCases(defaultSchema, identifierQuote string) []CompletionT
 			},
 		},
 		{
-			// A comma ends the item an AS renames, so the FROM list goes on.
 			Name: "a relation after an aliased one",
 			SQL:  "SELECT * FROM t2 AS d, |",
 			Expected: []CompletionTestExpectation{
@@ -1006,6 +1005,7 @@ func GetCompletionClauseCases() []CompletionClauseCase {
 		{"a relation after a comma takes no keyword", "SELECT * FROM t1, |", ""},
 		{"an aliased relation after a comma too", "SELECT * FROM t1 AS a, |", ""},
 		{"an aliased select item after a comma opens one", "SELECT c1 AS x, |", "expression_start"},
+		{"a comma after a CTE waits for the next one's name", "WITH x AS (SELECT 1), |", ""},
 		{"a follower being typed is still one", "SELECT * FROM t1 W|", "relation"},
 		{"a predicate follower being typed too", "SELECT * FROM t1 WHERE c1 = 1 AN|", "predicate"},
 		{"a name being typed is not a follower", "SELECT * FROM t|", ""},

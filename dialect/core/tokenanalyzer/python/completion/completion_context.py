@@ -1006,6 +1006,8 @@ def _walk_to_clause(tokens: list) -> Clause:
             # call's paren narrows that clause, since a relation standing in a
             # FROM is still a relation when a comma or LATERAL precedes it.
             inside_call = inside_call or _is_identifier_token(tokens[i - 1])
+            # A comma inside the paren separates its own list, not the clause's.
+            past_a_comma = False
             i -= 1
             continue
 

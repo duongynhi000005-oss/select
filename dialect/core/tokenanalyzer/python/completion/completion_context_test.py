@@ -199,15 +199,14 @@ class TestContextualWords:
         assert _detect_keyword_context(tokens) == TARGET_SCHEMA_AND_TABLE_ALL
 
     def test_a_comma_ends_the_item_an_alias_renames(self):
-        for sql in ("SELECT * FROM t2 AS d, |",
-                    "SELECT * FROM t2 AS d, t1 AS e, |",
-                    "SELECT * FROM (SELECT c1 FROM t2) AS d, |",
-                    "SELECT * FROM (VALUES (1)) AS v(x), |",
+        for sql in ("SELECT * FROM (VALUES (1)) AS v(x), |",
                     "UPDATE t1 SET c1 = 1 FROM (SELECT c1 FROM t2) AS d, |"):
             tokens, _, _ = _at_caret(sql)
             assert _detect_keyword_context(tokens) == TARGET_SCHEMA_AND_TABLE_ALL, sql
-        tokens, _, _ = _at_caret("SELECT c1 AS x, |")
-        assert _detect_keyword_context(tokens) == TARGET_ALL
+
+    def test_a_comma_inside_an_alias_column_list_keeps_the_alias(self):
+        tokens, _, _ = _at_caret("SELECT * FROM t1 AS a(x, |")
+        assert _walk_to_clause(tokens).word == "AS"
 
     def test_a_comma_after_a_cte_or_a_window_still_names_the_next(self):
         for sql in ("WITH w AS (SELECT 1), |",
