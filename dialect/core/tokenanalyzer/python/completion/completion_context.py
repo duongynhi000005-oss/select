@@ -965,6 +965,7 @@ def _walk_to_clause(tokens: list) -> Clause:
     paren_depth = 0
     case_depth = 0
     inside_call = False
+    past_a_comma = False
     i = len(tokens) - 1
 
     if i >= 0 and tokens[i].token_type == TokenType.DOT:
@@ -1012,6 +1013,15 @@ def _walk_to_clause(tokens: list) -> Clause:
             break
 
         if paren_depth > 0:
+            i -= 1
+            continue
+
+        if tt == TokenType.COMMA:
+            past_a_comma = True
+        elif tt == TokenType.ALIAS and past_a_comma \
+                and not _names_a_cte(tokens, i) and not _names_a_window(tokens, i):
+            # A comma ends the item an alias renames, so the clause the item
+            # stood in is the one the caret is in: "FROM t AS a, " lists relations.
             i -= 1
             continue
 
