@@ -3,6 +3,7 @@ package core
 import (
 	"fmt"
 	"strings"
+	"unicode"
 )
 
 // CandidateType represents the type of a completion suggestion
@@ -111,6 +112,7 @@ type CompletionContext struct {
 
 type CompletionStrategy struct {
 	dialect SQLDialect
+	sql     string // The statement being completed, which quote reads
 }
 
 // NewCompletionStrategy creates a new completion strategy with the rationalized algorithm
@@ -133,6 +135,7 @@ func (cs *CompletionStrategy) CompleteFromSQL(
 		return cs.completeSettings(meta)
 	}
 
+	cs.sql = sql
 	caretOffset := charOffsetFromLineCol(sql, caretLine, caretCol)
 	caretQuoted := caretOffset > 0 && caretOffset < len(sql) && sql[caretOffset] == '"'
 	nestingLevel := ctx.CaretNesting
@@ -178,7 +181,7 @@ func (cs *CompletionStrategy) CompleteFromSQL(
 							name = r.Table
 						}
 						if name != "" && !seen[name] {
-							tables = append(tables, Candidate{Type: CandidateTypeTable, Text: cs.dialect.QuoteIdentifierIfNeeded(name, caretQuoted, reservedKeywords)})
+							tables = append(tables, Candidate{Type: CandidateTypeTable, Text: cs.quote(name, caretQuoted, reservedKeywords)})
 							seen[name] = true
 						}
 					}
@@ -204,9 +207,13 @@ func (cs *CompletionStrategy) CompleteFromSQL(
 		{
 			seen := map[string]bool{}
 			addTable := func(name string) {
-				if name != "" && !seen[name] {
-					tables = append(tables, Candidate{Type: CandidateTypeTable, Text: cs.dialect.QuoteIdentifierIfNeeded(name, caretQuoted, reservedKeywords)})
-					seen[name] = true
+				if name == "" {
+					return
+				}
+				text := cs.quote(name, caretQuoted, reservedKeywords)
+				if key := cs.dialect.NormalizeIdentifier(text); !seen[key] {
+					tables = append(tables, Candidate{Type: CandidateTypeTable, Text: text})
+					seen[key] = true
 				}
 			}
 
@@ -248,9 +255,15 @@ func (cs *CompletionStrategy) CompleteFromSQL(
 				seen[cs.dialect.NormalizeIdentifier(t.Text)] = true
 			}
 			for _, vt := range inScopeCtes {
-				name := vt.Table
-				if name != "" && !seen[cs.dialect.NormalizeIdentifier(name)] {
-					tables = append(tables, Candidate{Type: CandidateTypeTable, Text: cs.dialect.QuoteIdentifierIfNeeded(name, caretQuoted, reservedKeywords)})
+				if vt.Table == "" {
+					continue
+				}
+				// Compared as the candidates spell it: a raw name folds where
+				// its quoted form keeps its case.
+				text := cs.quote(vt.Table, caretQuoted, reservedKeywords)
+				if key := cs.dialect.NormalizeIdentifier(text); !seen[key] {
+					tables = append(tables, Candidate{Type: CandidateTypeTable, Text: text})
+					seen[key] = true
 				}
 			}
 		}
@@ -288,6 +301,43 @@ func (cs *CompletionStrategy) CompleteFromSQL(
 	all = append(all, functions...)
 	all = append(all, types...)
 	return all
+}
+
+// quote spells a name for insertion. A name the statement writes bare is
+// offered as written, since the dialect already reads that spelling as the one
+// meant; quoting a mixed-case one would name a different identifier.
+func (cs *CompletionStrategy) quote(name string, caretQuoted bool, reserved map[string]bool) string {
+	quoted := cs.dialect.QuoteIdentifierIfNeeded(name, caretQuoted, reserved)
+	if quoted == name || strings.Contains(cs.sql, quoted) || !writtenBare(cs.sql, name) {
+		return quoted
+	}
+	return name
+}
+
+// writtenBare reports whether sql spells name as a whole unquoted word.
+func writtenBare(sql, name string) bool {
+	for from := 0; ; {
+		idx := strings.Index(sql[from:], name)
+		if idx < 0 {
+			return false
+		}
+		start, end := from+idx, from+idx+len(name)
+		if !bareWordEdge(sql, start-1) && !bareWordEdge(sql, end) {
+			return true
+		}
+		from = start + 1
+	}
+}
+
+// bareWordEdge reports whether the byte at i continues a word or opens a
+// quote, either of which makes the match beside it something else.
+func bareWordEdge(sql string, i int) bool {
+	if i < 0 || i >= len(sql) {
+		return false
+	}
+	c := sql[i]
+	return c == '_' || c == '$' || c == '"' || c == '`' || c == '[' || c == ']' || c == '\'' ||
+		c >= 0x80 || unicode.IsLetter(rune(c)) || unicode.IsDigit(rune(c))
 }
 
 // completeTypes are the types this database holds: the dialect's own, which
@@ -1031,7 +1081,7 @@ func (cs *CompletionStrategy) buildColumnCandidate(
 
 	return Candidate{
 		Type:       CandidateTypeColumn,
-		Text:       cs.dialect.QuoteIdentifierIfNeeded(col.Name, caretQuoted, reservedKeywords),
+		Text:       cs.quote(col.Name, caretQuoted, reservedKeywords),
 		Definition: def,
 	}
 }
@@ -1045,8 +1095,8 @@ func (cs *CompletionStrategy) buildPrefixedColumnCandidate(
 ) Candidate {
 	// Create prefixed column name: table.column
 	// Quote each part separately to avoid quoting the dot
-	quotedTableName := cs.dialect.QuoteIdentifierIfNeeded(tableName, caretQuoted, reservedKeywords)
-	quotedColumnName := cs.dialect.QuoteIdentifierIfNeeded(col.Name, caretQuoted, reservedKeywords)
+	quotedTableName := cs.quote(tableName, caretQuoted, reservedKeywords)
+	quotedColumnName := cs.quote(col.Name, caretQuoted, reservedKeywords)
 	prefixedName := quotedTableName + "." + quotedColumnName
 
 	// Create definition showing the table prefix
