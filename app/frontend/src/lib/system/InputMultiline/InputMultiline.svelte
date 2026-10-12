@@ -18,8 +18,11 @@
 
 	let {
 		value = $bindable(),
+		// Written here, read by the parent through bind:, which neither rule sees.
+		/* eslint-disable @typescript-eslint/no-unused-vars, no-useless-assignment */
 		focused = $bindable(false),
 		active = $bindable(false),
+		/* eslint-enable @typescript-eslint/no-unused-vars, no-useless-assignment */
 		placeholder = '',
 		autofocus = false,
 		onkeydown,
