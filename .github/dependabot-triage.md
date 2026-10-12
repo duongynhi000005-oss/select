@@ -1,6 +1,6 @@
 # Dependabot PR triage
 
-Last refreshed 2026-10-02 against `dev` @ `7bc388e`.
+Last refreshed 2026-10-12 against `dev` @ `6154d75`.
 
 Working notes from a sweep of the open Dependabot queue: what each PR carries,
 what blocks it, and the ordering constraints this monorepo imposes.
@@ -86,11 +86,55 @@ PR alone fails `npm ci` with a peer conflict (#406 on 2026-10-02), and the meta
 package often gets no PR at all because the npm queue is capped at five open
 PRs. Bump the three together in one commit.
 
+**A Go security release turns every PR red, and Dependabot cannot fix it.**
+CI takes each module's toolchain from the `go` directive in its `go.mod`
+(`GOTOOLCHAIN=local`), and `Security (*)` runs govulncheck against it. When Go
+ships a patch release with standard library fixes, the gate goes red on `dev`
+and on every PR at once, including Dependabot's own. Dependabot never bumps the
+`go` directive, so the fix is a hand edit of every `go.mod`, and it belongs in
+the sweep that is already open. The 2026-10-11 release of 1.26.9 did this to
+the 2026-10-09 queue. `toolkit` was still on `go 1.25.13`, a line that no
+longer receives security fixes, which is why it had to jump a minor.
+
+**Stack Dependabot's lock patches, do not regenerate the lockfile.** With CI's
+exact npm (Node 24.21.0, npm 11.19.0 on 2026-10-12), a lockfile written from
+scratch still differed from the committed one by about 1200 lines of
+formatting and ordering. What kept the diff to the bumped packages was to
+cherry-pick each npm PR in turn (`git fetch origin refs/pull/N/head`),
+resolve the one-package conflicts toward the newer version, finish the
+package.json edits by hand, and only then run `npm install --package-lock-only`
+and `npm dedupe --package-lock-only` under CI's npm, which flattens the nested
+copies the one-at-a-time bumps left behind. `npm ci` afterwards is the proof
+that package.json and the lock agree.
+
+**An eslint major moves `@eslint/js` with it.** `js.configs.recommended` comes
+from `@eslint/js`, not from `eslint`, so an eslint major bumped alone keeps the
+old recommended set and CI stays green by accident. Dependabot opened eslint 10
+(#512) without `@eslint/js` 10 because the npm queue is capped at five PRs.
+eslint 10's recommended set added `preserve-caught-error` and
+`no-useless-assignment`, each with one finding here.
+
+**A typescript-eslint patch can add findings.** 8.71.1 reports a `$bindable`
+prop that a component only writes as unused, although the parent reads it
+through `bind:`. That is what made #509 red alone, not the peer conflict. No
+upstream fix on 2026-10-12, and `eslint-plugin-svelte` 3.23.1 with
+`svelte-eslint-parser` 1.9.0 does not change the verdict. The two props in
+`InputMultiline.svelte` carry a scoped disable with the reason.
+
 ## Remaining queue
 
-Empty once #414 lands. It folds every PR of the 2026-10-02 sweep.
+Empty once #536 lands. It folds every PR of the 2026-10-09 sweep.
 
 ## Merged
+
+**2026-10-09** (superseded by #536, which bumps every pin at once) - #513,
+#514, #515 and #517 (aws-sdk-go-v2 1.47.1, config 1.33.6, service/s3 1.114.0
+and credentials 1.20.6, backend), #516 (x/sync 0.24.0, backend), #508
+(wails/v3 beta.28, app), #510 (@wailsio/runtime beta.28), #512 (eslint
+10.12.0), #509 and #511 (typescript-eslint and @typescript-eslint/eslint-plugin
+8.71.1), #507 (dompurify 3.4.16), #506 (anthropics/claude-code-action 1.0.244).
+#536 also moves every `go` directive to 1.26.9, the `WAILS_VERSION` pin to
+beta.28, `@eslint/js` to 10.0.1 and `@typescript-eslint/parser` to 8.71.1.
 
 **2026-10-02** (superseded by #414, which bumps every pin at once) - #399, #405
 and #407 (sqlite 1.60.1, dialect, backend and app), #400, #401 and #403
