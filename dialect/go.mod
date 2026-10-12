@@ -1,6 +1,6 @@
 module github.com/selectDb/dialect
 
-go 1.26.8
+go 1.26.9
 
 require (
 	github.com/antlr4-go/antlr/v4 v4.13.1

@@ -201,7 +201,9 @@ function writeWebP(dest: string, png: Buffer) {
 		execFileSync('cwebp', ['-quiet', '-lossless', '-z', '9', src, '-o', dest]);
 	} catch (err) {
 		if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
-			throw new Error('cwebp not found. Install libwebp: brew install webp, or apt install webp');
+			throw new Error('cwebp not found. Install libwebp: brew install webp, or apt install webp', {
+				cause: err
+			});
 		}
 		throw err;
 	} finally {
