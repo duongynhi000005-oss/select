@@ -9,11 +9,11 @@ import (
 	"testing"
 
 	"selectDb/internal/db"
-	"selectDb/internal/db/db_types"
 	"selectDb/internal/db/generated"
 	"selectDb/internal/edition"
 	"selectDb/internal/graph"
 	"selectDb/internal/server"
+	"selectDb/internal/system"
 
 	"modernc.org/sqlite"
 )
@@ -43,13 +43,10 @@ func newLocalWorkspace(t *testing.T) (*Workspace, string) {
 	t.Cleanup(graph.ClearOpenWorkspace)
 
 	q := generated.New(db.NewLiveDB())
-	ctx := context.Background()
-	u, err := q.UpsertUser(ctx, generated.UpsertUserParams{ID: "local-user", Name: db_types.NewJSONNullString("Ada")})
+	system.New(q, nil, nil, nil).CheckForLogin()
+	u, err := q.GetCurrentUser(context.Background())
 	if err != nil {
-		t.Fatalf("upsert user: %v", err)
-	}
-	if err := q.SetCurrentUser(ctx, u.ID); err != nil {
-		t.Fatalf("set current user: %v", err)
+		t.Fatalf("no local user after CheckForLogin: %v", err)
 	}
 	w := New(q, nil)
 	w.PullFunc = func(context.Context, string) error {

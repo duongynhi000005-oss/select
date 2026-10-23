@@ -10,30 +10,31 @@
 	// no folder open.
 	const user = $derived($currentUserStore);
 
-	const settings: ContextMenuOption = {
-		label: 'Settings',
-		action: (onclose) => {
-			openSettingsSection();
-			onclose();
-		}
-	};
-
-	const logout: ContextMenuOption[] = [
+	const options: ContextMenuOption[] = [
 		{
-			label: '',
-			divider: true
-		},
-		{
-			label: 'Log out',
-			action: async (onclose) => {
-				await Logout();
+			label: 'Settings',
+			action: (onclose) => {
+				openSettingsSection();
 				onclose();
 			}
-		}
+		},
+		// The local edition has no session to end.
+		...(isLocalEdition
+			? []
+			: [
+					{
+						label: '',
+						divider: true
+					},
+					{
+						label: 'Log out',
+						action: async (onclose: () => void) => {
+							await Logout();
+							onclose();
+						}
+					}
+				])
 	];
-
-	// The local edition has no session to end.
-	const options = [settings, ...(isLocalEdition ? [] : logout)];
 </script>
 
 {#if user}

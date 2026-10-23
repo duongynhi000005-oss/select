@@ -201,12 +201,9 @@ func FetchStream(
 	return resp.Body, nil
 }
 
-// errNoServer answers every backend call in the local edition.
-var errNoServer = errors.New("this edition of Select runs without a server")
-
 func GetBaseURL() (string, error) {
 	if edition.Local {
-		return "", errNoServer
+		return "", errors.New("this edition of Select runs without a server")
 	}
 	domain, err := server.ReadCurrentDomain()
 	if err != nil {

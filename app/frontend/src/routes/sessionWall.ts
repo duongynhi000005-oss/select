@@ -73,7 +73,8 @@ const onLogin = async () => {
 	await reopenLastFolder();
 
 	modalStore.set(null);
-	logoutPollInterval = setInterval(() => CheckForLogout(), 500);
+	// The local edition has no session to end.
+	if (!isLocalEdition) logoutPollInterval = setInterval(() => CheckForLogout(), 500);
 	await Promise.all([permissions, user]);
 };
 
@@ -81,13 +82,10 @@ EventsOn('login', onLogin);
 
 export const setupSessionWall = async () => {
 	await tryCatch(CheckForLogin);
-	try {
-		// Signed in here rather than on an event, so the loader holds until the
-		// folder is back instead of showing the login page in between.
-		if (isLocalEdition) await onLogin();
-	} finally {
-		sessionCheckingStore.set(false);
-	}
+	// Signed in here rather than on an event, so the loader holds until the
+	// folder is back instead of showing the login page in between.
+	if (isLocalEdition) await tryCatch(onLogin);
+	sessionCheckingStore.set(false);
 };
 
 export const teardownSessionWall = () => {
