@@ -207,6 +207,10 @@ tasks:
     summary: Runs the application in development mode
     cmds:
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
+    # `wails3 dev` builds and serves through child processes, which see the
+    # environment rather than this task's vars.
+    env:
+      APP_EDITION: '{{.APP_EDITION}}'
 
   dev:frontend:
     summary: Runs the frontend dev server (used by `wails3 dev`)

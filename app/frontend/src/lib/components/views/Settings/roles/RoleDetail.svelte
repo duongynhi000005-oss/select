@@ -26,6 +26,7 @@
 	import { modalStore } from '$lib/system/Modal/ModalStore';
 	import PermissionInfoModal from '../shared/PermissionInfoModal.svelte';
 	import { permissionActions, type PermissionActions } from '$lib/stores/myPermissionsStore';
+	import { offeredSettingsSections, settingsSections } from '../sections';
 
 	type SavedState = { expandedKeys?: string[]; scrollTop?: number; search?: string };
 	type Props = {
@@ -71,6 +72,12 @@
 				'Allows adding connections and managed databases to the workspace, and changing, forking, downloading, and deleting any of them.'
 		}
 	];
+
+	// A permission for a Settings section this build leaves out has nothing to grant.
+	const withheldActions = new Set(
+		settingsSections.filter((s) => !offeredSettingsSections.includes(s)).map((s) => s.action)
+	);
+	const appRows = APP_ROWS.filter((row) => !withheldActions.has(row.action));
 
 	function openPermInfo(row: (typeof APP_ROWS)[number]) {
 		modalStore.set({
@@ -488,7 +495,7 @@
 			<tbody>
 				<!-- App-level rows: only manage column -->
 				{#if !visibleIds}
-					{#each APP_ROWS as row (row.action)}
+					{#each appRows as row (row.action)}
 						{@const perm = permissionMap.get(permissionKey('', '', '', '', row.action))?.effect}
 						<tr>
 							<td class="col-resource">
