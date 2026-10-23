@@ -7,7 +7,7 @@ site.
 |------|------------|
 | `website/` | Marketing pages, served at `/`: hand-written HTML, one file per page, CSS inline. |
 | `docs/` | Everything behind `/docs/*`: the manifest, the page shell, the browser components and the pages with no code module of their own. |
-| `api/` | `index.html` for `/api/`, the full-viewport Scalar page. The bundle and the spec are staged into it at build time. |
+| `api/` | `index.html` for `/api/`, the full-viewport Scalar page. The bundle and the spec are staged into it at build time, while `publishAPIReference` is on. |
 | `generate/` | The site generator (Go + goldmark). `./dev.sh web build` builds; `./dev.sh web start` builds, serves on :3333 and watches. |
 | `base.css`, `theme.js`, `favicon.png`, `logo.png` | Shared by all three surfaces, which is why they sit here rather than in one of them. |
 | `dist/` | Build output. Git-ignored. |
@@ -38,7 +38,7 @@ one.
 | `/llms.txt` | The site index in the [llms.txt](https://llmstxt.org) format: the tagline, the marketing pages, every doc page with a one-line description, and pointers to the rest. Doc entries link to the twins, not the pages. |
 | `/llms-full.txt` | Every doc page concatenated, each under its source URL. |
 | `/sitemap.xml` | Every page, homepage first. |
-| JSON-LD | `TechArticle` on doc pages, from the template; `SoftwareApplication` with the shipping editions' prices on the homepage, written inline in `website/index.html` beside the prose it mirrors. |
+| JSON-LD | `TechArticle` on doc pages, from the template; `SoftwareApplication` with its price on the homepage, written inline in `website/index.html` beside the prose it mirrors. |
 
 There is nothing to keep in step: a twin **is** its source file, and the
 llms.txt tagline is read out of the homepage's own meta description. The one
@@ -56,7 +56,7 @@ nosniff` on every response stops the browser from guessing.
 |--------|--------|
 | `/` | Marketing (`website/`) |
 | `/docs/*` | Generated documentation (`docs/`) |
-| `/api/` | API reference (`api/`: Scalar + the generated OpenAPI spec) |
+| `/api/` | API reference (`api/`: Scalar + the generated OpenAPI spec), while `publishAPIReference` is on |
 
 **Write cross-references with the full path.** In a `.doc.md`, link to
 `/docs/workspace/roles/` — the URL the page actually has. Nothing rewrites links
@@ -154,6 +154,10 @@ same picture ships at roughly a third of the bytes. It needs an encoder on the
 build machine, which is why it is not wired up yet.
 
 ## API reference
+
+Not published while `publishAPIReference` in `generate/main.go` is off: the
+reference documents the Select server's HTTP API, and the app ships without
+one. Turning it back on restores the page, its assets and its llms.txt line.
 
 `api/index.html` is hand-written, like a marketing page and for the same
 reason: Scalar owns the whole viewport, so there is no docs layout to generate

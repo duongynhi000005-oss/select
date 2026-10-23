@@ -122,6 +122,10 @@ type buildConfig struct {
 // Scalar bundle fetched (and cached) at build time for the API reference. Pinned
 // for reproducibility; bump the version to upgrade. Fetching at build keeps the
 // bundle out of the repo while the built site still serves it same-origin.
+// publishAPIReference is off while the app ships without a Select server: the
+// reference documents that server's HTTP API. web/api/ stays as it is.
+const publishAPIReference = false
+
 const (
 	scalarVersion   = "1.36.2"
 	scalarBundleURL = "https://cdn.jsdelivr.net/npm/@scalar/api-reference@" + scalarVersion + "/dist/browser/standalone.js"
@@ -376,8 +380,10 @@ func build(cfg buildConfig) error {
 	if err := os.WriteFile(filepath.Join(cfg.outDir, "og.png"), card, 0o644); err != nil {
 		return fmt.Errorf("writing og card: %w", err)
 	}
-	if err := copyAPIAssets(cfg, string(themeCSS)); err != nil {
-		return fmt.Errorf("staging API reference assets: %w", err)
+	if publishAPIReference {
+		if err := copyAPIAssets(cfg, string(themeCSS)); err != nil {
+			return fmt.Errorf("staging API reference assets: %w", err)
+		}
 	}
 
 	var searchIndex []SearchEntry
@@ -760,6 +766,17 @@ func lint(rootDir string, tree []*SidebarNode, sidebarPath string) error {
 	pages := collectPages(tree)
 	seen := make(map[string]bool)
 
+	// A page commented out of sidebar.txt is held back on purpose, not lost.
+	hidden := make(map[string]bool)
+	if manifest, err := os.ReadFile(sidebarPath); err == nil {
+		for _, line := range strings.Split(string(manifest), "\n") {
+			line = strings.TrimSpace(line)
+			if i := strings.LastIndex(line, ":"); strings.HasPrefix(line, "#") && i != -1 {
+				hidden[strings.TrimSpace(line[i+1:])] = true
+			}
+		}
+	}
+
 	for _, p := range pages {
 		abs := filepath.Join(rootDir, p.Path)
 		if _, err := os.Stat(abs); os.IsNotExist(err) {
@@ -780,7 +797,7 @@ func lint(rootDir string, tree []*SidebarNode, sidebarPath string) error {
 		}
 		if strings.HasSuffix(path, ".doc.md") {
 			rel, _ := filepath.Rel(rootDir, path)
-			if !seen[rel] {
+			if !seen[rel] && !hidden[rel] {
 				fmt.Fprintf(os.Stderr, "warning: orphan doc file not in sidebar.txt: %s\n", rel)
 			}
 		}
@@ -975,7 +992,9 @@ func writeLLMsTxt(cfg buildConfig, pages []*SidebarNode, marketing []marketingPa
 
 	b.WriteString("\n## Optional\n\n")
 	b.WriteString("- [Full documentation, one file](/llms-full.txt): every page above, concatenated.\n")
-	b.WriteString("- [API reference](/api/): the HTTP API, rendered from /openapi.json.\n")
+	if publishAPIReference {
+		b.WriteString("- [API reference](/api/): the HTTP API, rendered from /openapi.json.\n")
+	}
 
 	os.WriteFile(filepath.Join(cfg.outDir, "llms.txt"), []byte(b.String()), 0o644)
 }

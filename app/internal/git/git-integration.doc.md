@@ -71,21 +71,18 @@ This keeps one teammate's color scheme and keybindings from overwriting
 everyone else's on pull, and lets your personal settings follow you across every
 workspace.
 
-### Workspace settings are synced through the backend
+### Workspace settings stay on your machine
 
-Some settings are team policy but are **not** stored as files. They live on the
-workspace and sync through the SELECT backend (like roles and permissions):
+Some settings belong to the workspace but are **not** files, so git does not
+carry them. SELECT keeps them in its own database on your machine:
 
+- The workspace's **name**
+- **Roles** and **permissions** ([Permissions](/docs/workspace/permissions/))
 - **Execution limits** (`statement_timeout_ms`, `max_result_size_mb`), edited in
-  **Settings → Workspace**.
+  **Settings → Workspace**
 
-## Sync
-
-Changes to users, roles, permissions, and workspace settings (including execution
-limits) are synced through the SELECT backend. These are not stored in git but
-kept in sync across team members through the server, whether or not the folder is
-a repository.
+Each teammate sets their own. A guardrail you put on a production database
+protects you, not everyone who clones the repository.
 
 > [!NOTE]
-> Git syncs your **files**. The SELECT backend syncs your **team settings**
-> (users, roles, permissions, execution limits).
+> Git syncs your **files**. Everything else in a workspace is yours alone.

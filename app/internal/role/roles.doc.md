@@ -1,27 +1,38 @@
 # Roles
 
-Roles group [permissions](/docs/workspace/permissions/) together and are assigned to [users](/docs/workspace/users/), either directly or through [groups](/docs/workspace/groups/). Each workspace defines its own roles.
+A role is a named set of [permissions](/docs/workspace/permissions/). It does
+nothing until you hold it: the rules SELECT checks are the rules of every role
+assigned to you.
 
-![The workspace's roles: three of them, each with the users holding it, the number of groups carrying it, and how many permission rules it is made of.](/shots/team.roles.light.webp)
+With no server and no other users, the person a role is assigned to is you.
+That makes roles guardrails: a production database you can read but never
+write, a column you would rather never see on screen.
 
-## Creating roles
+## Creating a role
 
-Create a role from the team management interface. Give it a name (must be unique within the workspace) and assign permissions.
+Open **Settings → Roles** and click **New role**. Give it a name, unique within
+the workspace, then tick the rules it carries. You can also **duplicate** an
+existing role and adjust it.
 
-You can also **duplicate** an existing role to use it as a starting point, then adjust permissions as needed.
+A new role applies to nobody yet. Click **Add user** at the top of the role and
+add yourself.
 
-## Assigning users
+## Holding several roles
 
-A role can have multiple users, and a user can have multiple roles. Assign a role to a user directly, or attach it to a [group](/docs/workspace/groups/) so every member inherits it. Permissions from all of a user's roles, direct and group-derived, are combined.
+Rules from all the roles you hold are combined, and a deny always wins over an
+allow. See [Allow and deny](/docs/workspace/permissions/#allow-and-deny).
 
 ## Examples
 
-Common patterns:
-
-- **Read-only**: a role with `SELECT` on all databases, no write permissions
-- **Developer**: `SELECT`, `INSERT`, `UPDATE`, `DELETE` on development databases
-- **DBA**: full database permissions including `DDL` (schema changes)
-- **Admin**: workspace-level permissions for managing users and roles
+- **Read-only production**: allow `SELECT` and `SEE` on the production
+  database, and nothing else. Writes and schema changes there are refused,
+  while every other database stays as open as it was.
+- **Masked column**: allow `SELECT` and `SEE` on the database, then deny `SEE`
+  on `customers.email`. Its cells come back as `*****`, and a query that
+  filters on it is refused. The allow matters: once a role you hold has any rule
+  on a database, whatever it does not allow there is refused.
+- **No accidental deletes**: allow `SELECT`, `SEE`, `INSERT` and `UPDATE` on a
+  database, but not `DELETE`.
 
 > [!NOTE]
 > Roles have no hierarchy or inheritance. Each role is a flat set of permissions.

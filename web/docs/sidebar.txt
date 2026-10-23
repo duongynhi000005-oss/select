@@ -1,23 +1,26 @@
 # SELECT Documentation
+#
+# A commented-out page documents a feature that needs a Select server, which
+# the app ships without. The file stays beside its code, unpublished.
 
 Getting Started              : web/docs/content/introduction.doc.md
-API
-  Reference                  : /api/
+# API
+#   Reference                  : /api/
 Workspace
   Workspace Folder           : app/internal/workspace/workspace-folder.doc.md
   Git                        : app/internal/git/git-integration.doc.md
-  Users                      : app/internal/user/users.doc.md
+#   Users                      : app/internal/user/users.doc.md
   Roles                      : app/internal/role/roles.doc.md
   Permissions                : app/internal/role/permissions.doc.md
-  Groups                     : app/internal/group/groups.doc.md
-  API Keys                   : app/internal/apikey/api-keys.doc.md
-  Audit Logs                 : backend/internal/audit/audit-logs.doc.md
-  MCP Server                 : backend/internal/mcp/mcp-server.doc.md
+#   Groups                     : app/internal/group/groups.doc.md
+#   API Keys                   : app/internal/apikey/api-keys.doc.md
+#   Audit Logs                 : backend/internal/audit/audit-logs.doc.md
+#   MCP Server                 : backend/internal/mcp/mcp-server.doc.md
   AI Chat                    : app/frontend/src/lib/components/views/Chat/ai-chat.doc.md
 Databases
   Connecting                 : app/frontend/src/lib/components/views/Datasource/connecting.doc.md
   SSH Tunnels                : dialect/engine/connect/ssh-tunnels.doc.md
-  Proxified Connections      : app/internal/datasource/proxified.doc.md
+#   Proxified Connections      : app/internal/datasource/proxified.doc.md
   Schema Introspection       : dialect/engine/schema/schema-introspection.doc.md
 SQL
   SQL Files                  : app/frontend/src/lib/components/views/File/sql-files.doc.md

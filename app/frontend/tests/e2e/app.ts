@@ -108,7 +108,10 @@ export async function startApp(workerIndex: number) {
 	mkdirSync(dataDir, { recursive: true });
 	const apiPort = API_BASE_PORT + workerIndex;
 	const api = await startAPI(apiPort);
-	execFileSync(SEED_BIN, [dataDir, `localhost:${apiPort}`], { stdio: 'pipe' });
+	// The local edition keeps its database under the `local` domain whatever the
+	// seed says, so a fixture written for the mock API would never be read.
+	const domain = process.env.APP_EDITION === 'local' ? 'local' : `localhost:${apiPort}`;
+	execFileSync(SEED_BIN, [dataDir, domain], { stdio: 'pipe' });
 
 	const port = BASE_PORT + workerIndex;
 	const url = `http://${HOST}:${port}`;

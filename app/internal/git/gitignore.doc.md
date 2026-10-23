@@ -30,7 +30,7 @@ scratch/
 ## What to keep in git
 
 - **`datasource.config.json`**: safe to commit when credentials use `$VAR` references
-- **`.theme`**, **`.config`**, **`.lint`**: shared team settings, should be committed
+- **`.lint`**: your team's lint rules, should be committed
 - **`.sql` files**: your queries, the core of the workspace
 
 ## What to exclude

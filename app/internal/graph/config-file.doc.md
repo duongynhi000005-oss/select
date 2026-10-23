@@ -6,7 +6,7 @@ SELECT's per-user config directory and follows you across every workspace.
 
 > [!IMPORTANT]
 > Execution limits (`statement_timeout_ms`, `max_result_size_mb`) are **not** in
-> `.config`. They are workspace-level team policy and are configured in
+> `.config`. They belong to the workspace and are configured in
 > **Settings → Workspace** (see [Execution limits](#execution-limits) below).
 
 ## Where the file lives
@@ -29,9 +29,9 @@ You don't need to find it on disk: open it from **Settings → Config**.
 
 ## Execution limits
 
-Execution limits are **workspace** settings, shared with everyone in the
-workspace (synced through the SELECT backend, like roles and permissions), and
-edited in **Settings → Workspace**:
+Execution limits are **workspace** settings, kept on your machine like roles
+and permissions rather than in the folder, and edited in
+**Settings → Workspace**:
 
 | Field                    | Default | Description                                         |
 |--------------------------|---------|-----------------------------------------------------|

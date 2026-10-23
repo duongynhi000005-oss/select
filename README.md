@@ -1,8 +1,9 @@
 # SELECT
 
 An SQL client shaped like an IDE. Schema-aware completion, real-time linting,
-git-based team workspaces with granular per-database permissions, and local or
-proxified connections to PostgreSQL, MySQL, and SQLite.
+workspaces shared through git, and column-level guardrails on what you can run,
+against PostgreSQL, MySQL, and SQLite. It runs on your machine: no account, no
+server.
 
 ## Development
 

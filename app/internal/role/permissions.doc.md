@@ -1,6 +1,6 @@
 # Permissions
 
-Permissions control what users can do in a workspace. They are assigned to [roles](/docs/workspace/roles/) at varying levels of granularity.
+Permissions limit what you can run against your databases, down to a single column. They are grouped into [roles](/docs/workspace/roles/) and apply once a role is assigned to you, so they work as guardrails: a production database you can only read, a column you never see in clear.
 
 ![The permission grid for a role: workspace-level rows above, then the database, its schema and its tables, with allow and deny against each action.](/shots/permissions.light.webp)
 
@@ -10,7 +10,6 @@ Permissions are hierarchical. You can grant or deny access at five levels, from 
 
 | Level       | Scope                                           |
 |-------------|--------------------------------------------------|
-| **App**     | Workspace settings, user, role, group, and API key management, and adding connections |
 | **Database**| All schemas, tables, and columns in a database   |
 | **Schema**  | All tables and columns in a schema               |
 | **Table**   | All columns in a table                           |
@@ -31,18 +30,10 @@ Permissions are defined per action:
 | **MANAGE** | Change the database itself: its structure, its access, its configuration |
 | **SEE**    | Read the values in a column. Without it the column's cells come back masked |
 
-App-level actions cover workspace administration:
-
-| Action                    | Description                                      |
-|---------------------------|--------------------------------------------------|
-| **Workspace settings**    | Edit workspace name, git remote, and settings    |
-| **Workspace users**       | Invite, remove, and manage members               |
-| **Workspace roles**       | Create, edit, and delete roles and permissions   |
-| **Workspace groups**      | Create groups and manage members; attaching a role to a group also requires Workspace roles |
-| **Workspace API keys**    | Create, rotate, and revoke API keys              |
-| **Workspace connections** | Add connections and managed databases to the workspace, and change, fork, download, or delete any of them. **MANAGE** on one database grants the same for that database alone |
-
-API keys let automated clients authenticate with the roles bound to the key, so every query they run passes through this same permission model.
+The grid also lists workspace rows above the databases: workspace settings,
+roles, groups and connections. They decide who may administer a workspace. You
+own every workspace you open, and the owner holds all of them, so they never
+limit you.
 
 ### Hiding a column
 
@@ -103,17 +94,17 @@ say which one comes out.
 
 ## Allow and deny
 
-Each permission has an **effect**: `allow` or `deny`. When a user has multiple roles, all permissions are combined. **Deny always wins**: if one role allows an action and another denies it, the action is denied.
+Each permission has an **effect**: `allow` or `deny`. When you hold several roles, all their permissions are combined. **Deny always wins**: if one role allows an action and another denies it, the action is denied.
 
 Evaluation order:
 
-1. SELECT checks all deny rules first across all of the user's roles
+1. SELECT checks all deny rules first across all of your roles
 2. If any deny matches, access is refused (regardless of allow rules)
 3. If no deny matches, SELECT checks allow rules
 4. If an allow matches, access is granted
 5. If neither matches, access is refused (default deny)
 
-This lets you create broad access with targeted restrictions. For example, a "Developer" role can allow all operations, while an "Intern" role adds a deny on `MANAGE` for production databases. A user with both roles cannot change the schema on production.
+This lets you start broad and add targeted restrictions. For example, a "Developer" role can allow every action on production, while a "Careful" role adds a deny on `MANAGE` there. Holding both, you cannot change the schema on production.
 
 The first four actions are about the rows in a table. MANAGE is about the
 database itself: creating, altering and dropping tables, granting access,
@@ -136,23 +127,16 @@ Every table a statement names counts, including one no column is selected from.
 appears in the result, and a `WHERE` over it reports what those rows hold, so it
 needs SELECT on `t2` as well as on `t1`.
 
-## Databases nobody has written a rule for
+## Databases no role mentions
 
-Step 5 is about a database your roles *do* cover. A database that no role in the
-workspace mentions at all is a different case, and the answer depends on who is
-holding the credentials.
+Step 5 is about a database your roles *do* cover. A database that none of your
+roles mentions is not checked at all: the DSN is yours, on your machine, and
+refusing would only be refusing you your own database.
 
-| Connection | A database with no rules | Why |
-|------------|--------------------------|-----|
-| **Local** | Allowed | The DSN is yours, on your machine. Refusing here would only be refusing you access to your own database. |
-| **[Proxified](/docs/databases/proxified-connections/)** | Refused | The credentials are held server-side and the query runs on our server. Nothing is granted that a role did not grant. |
-| **[MCP](/docs/workspace/mcp-server/)** | Refused | Same server, same rule. An agent gets what its key's roles name, and nothing else. |
-
-> [!IMPORTANT]
-> Adding a database to a proxified workspace does not make it readable. Until a
-> role carries an allow rule for it, every query against it is refused,
-> including from an API key that can read every other database in the
-> workspace.
+The first rule on a database changes that, whether it allows or denies. From
+then on, whatever your roles do not allow there is refused, so a role that
+only denies `SEE` on one column also locks every other column of that database.
+Allow what you want first, then deny the exceptions.
 
 ## Scope
 
@@ -160,11 +144,13 @@ When adding a permission, you choose its scope using checkboxes. Granting access
 
 ## Example setup
 
-A typical team might have:
+Guardrails one person might set:
 
-| Role        | Database    | Action               | Effect |
-|-------------|-------------|----------------------|--------|
-| Developer   | dev-db      | SELECT, INSERT, UPDATE, DELETE | allow |
-| Developer   | prod-db     | SELECT               | allow  |
-| DBA         | *           | SELECT, INSERT, UPDATE, DELETE, MANAGE | allow |
-| Analyst     | prod-db     | SELECT               | allow  |
+| Role           | Database | Scope            | Action                    | Effect |
+|----------------|----------|------------------|---------------------------|--------|
+| Read-only prod | prod-db  | database         | SELECT, SEE               | allow  |
+| Read-only prod | prod-db  | `customers.email`| SEE                       | deny   |
+| Careful dev    | dev-db   | database         | SELECT, SEE, INSERT, UPDATE | allow |
+
+Holding both roles, you can read production with emails masked and change rows
+on dev-db, but nothing on either database can drop a table or delete a row.
