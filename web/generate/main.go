@@ -253,14 +253,17 @@ func main() {
 }
 
 func build(cfg buildConfig) error {
-	tree, err := parseSidebar(cfg.sidebarPath)
+	tree, hidden, err := parseSidebar(cfg.sidebarPath)
 	if err != nil {
 		return fmt.Errorf("parsing sidebar.txt: %w", err)
 	}
 
-	if err := lint(cfg.rootDir, tree, cfg.sidebarPath); err != nil {
+	if err := lint(cfg.rootDir, tree, hidden, cfg.sidebarPath); err != nil {
 		return fmt.Errorf("lint: %w", err)
 	}
+
+	// The sidebar's link to the API reference is what publishes it.
+	publishAPI := linksTo(tree, "/api/")
 
 	pages := collectPages(tree)
 
@@ -376,8 +379,10 @@ func build(cfg buildConfig) error {
 	if err := os.WriteFile(filepath.Join(cfg.outDir, "og.png"), card, 0o644); err != nil {
 		return fmt.Errorf("writing og card: %w", err)
 	}
-	if err := copyAPIAssets(cfg, string(themeCSS)); err != nil {
-		return fmt.Errorf("staging API reference assets: %w", err)
+	if publishAPI {
+		if err := copyAPIAssets(cfg, string(themeCSS)); err != nil {
+			return fmt.Errorf("staging API reference assets: %w", err)
+		}
 	}
 
 	var searchIndex []SearchEntry
@@ -467,7 +472,7 @@ func build(cfg buildConfig) error {
 	os.WriteFile(filepath.Join(cfg.outDir, "search-index.json"), searchJSON, 0o644)
 	writeSitemap(cfg.outDir, pages, marketing)
 	os.WriteFile(filepath.Join(cfg.outDir, "robots.txt"), []byte("User-agent: *\nAllow: /\nSitemap: "+siteURL+"/sitemap.xml\n"), 0o644)
-	writeLLMsTxt(cfg, pages, marketing)
+	writeLLMsTxt(cfg, pages, marketing, publishAPI)
 	writeLLMsFullTxt(cfg, pages, marketing)
 
 	headers := `/*
@@ -604,14 +609,17 @@ func watch(cfg buildConfig) {
 	}
 }
 
-func parseSidebar(path string) ([]*SidebarNode, error) {
+// parseSidebar also returns the targets of commented-out entries: pages held back
+// on purpose, which lint does not report as orphans.
+func parseSidebar(path string) ([]*SidebarNode, []string, error) {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 
 	lines := strings.Split(string(data), "\n")
 	var root []*SidebarNode
+	var hidden []string
 
 	type stackEntry struct {
 		indent int
@@ -620,12 +628,11 @@ func parseSidebar(path string) ([]*SidebarNode, error) {
 	var stack []stackEntry
 
 	for lineNum, line := range lines {
-		if strings.TrimSpace(line) == "" || strings.HasPrefix(strings.TrimSpace(line), "#") {
+		trimmed := strings.TrimSpace(line)
+		if trimmed == "" {
 			continue
 		}
-
-		indent := countIndent(line)
-		trimmed := strings.TrimSpace(line)
+		commented := strings.HasPrefix(trimmed, "#")
 
 		var label, filePath string
 		if idx := strings.LastIndex(trimmed, ":"); idx != -1 {
@@ -635,9 +642,18 @@ func parseSidebar(path string) ([]*SidebarNode, error) {
 			label = trimmed
 		}
 
-		if label == "" {
-			return nil, fmt.Errorf("sidebar.txt:%d: empty label", lineNum+1)
+		if commented {
+			if filePath != "" {
+				hidden = append(hidden, filePath)
+			}
+			continue
 		}
+
+		if label == "" {
+			return nil, nil, fmt.Errorf("sidebar.txt:%d: empty label", lineNum+1)
+		}
+
+		indent := countIndent(line)
 
 		node := &SidebarNode{
 			Label: label,
@@ -669,7 +685,17 @@ func parseSidebar(path string) ([]*SidebarNode, error) {
 	// Cross-references inside .doc.md files are written with the same prefix,
 	// so moving the docs means updating both this line and those links.
 	computeHTMLPaths(root, "docs")
-	return root, nil
+	return root, hidden, nil
+}
+
+// linksTo reports whether the sidebar has a link node to url.
+func linksTo(nodes []*SidebarNode, url string) bool {
+	for _, n := range nodes {
+		if n.Href == url || linksTo(n.Children, url) {
+			return true
+		}
+	}
+	return false
 }
 
 func computeHTMLPaths(nodes []*SidebarNode, prefix string) {
@@ -756,7 +782,7 @@ func nodeContains(n *SidebarNode, path string) bool {
 	return false
 }
 
-func lint(rootDir string, tree []*SidebarNode, sidebarPath string) error {
+func lint(rootDir string, tree []*SidebarNode, hidden []string, sidebarPath string) error {
 	pages := collectPages(tree)
 	seen := make(map[string]bool)
 
@@ -769,6 +795,9 @@ func lint(rootDir string, tree []*SidebarNode, sidebarPath string) error {
 			return fmt.Errorf("%s: duplicate file reference: %s", sidebarPath, p.Path)
 		}
 		seen[p.Path] = true
+	}
+	for _, p := range hidden {
+		seen[p] = true
 	}
 
 	filepath.Walk(rootDir, func(path string, info os.FileInfo, err error) error {
@@ -892,7 +921,7 @@ func productFacts(page []byte) []string {
 			out = append(out, "Status: "+app.SoftwareVersion)
 		}
 		for _, o := range app.Offers {
-			out = append(out, fmt.Sprintf("%s edition: %s %s. %s",
+			out = append(out, fmt.Sprintf("%s: %s %s. %s",
 				o.Name, o.Price, o.PriceCurrency, o.Description))
 		}
 		if len(app.FeatureList) > 0 {
@@ -952,7 +981,7 @@ func tagline(marketing []marketingPage) string {
 // writeLLMsTxt writes the /llms.txt index: what this site is, and every page on
 // it. Doc entries link to the markdown twin rather than the page — a client
 // following this file wants the prose, not the chrome around it.
-func writeLLMsTxt(cfg buildConfig, pages []*SidebarNode, marketing []marketingPage) {
+func writeLLMsTxt(cfg buildConfig, pages []*SidebarNode, marketing []marketingPage, publishAPI bool) {
 	var b strings.Builder
 	b.WriteString("# SELECT\n\n")
 	b.WriteString("> " + tagline(marketing) + "\n\n")
@@ -975,7 +1004,9 @@ func writeLLMsTxt(cfg buildConfig, pages []*SidebarNode, marketing []marketingPa
 
 	b.WriteString("\n## Optional\n\n")
 	b.WriteString("- [Full documentation, one file](/llms-full.txt): every page above, concatenated.\n")
-	b.WriteString("- [API reference](/api/): the HTTP API, rendered from /openapi.json.\n")
+	if publishAPI {
+		b.WriteString("- [API reference](/api/): the HTTP API, rendered from /openapi.json.\n")
+	}
 
 	os.WriteFile(filepath.Join(cfg.outDir, "llms.txt"), []byte(b.String()), 0o644)
 }

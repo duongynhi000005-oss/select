@@ -243,7 +243,7 @@ tasks:
     cmds:
       # Built, not `go run`: every worker seeds its own workspace, and a compile
       # each is a cold cache away from dominating the run.
-      - go build -tags server -buildvcs=false -o "{{.BIN_DIR}}/e2eseed{{exeExt}}" ./internal/cmd/e2eseed
+      - go build -tags server -buildvcs=false -ldflags="{{.META_LDFLAGS}}" -o "{{.BIN_DIR}}/e2eseed{{exeExt}}" ./internal/cmd/e2eseed
     env:
       CGO_ENABLED: 0
 

@@ -7,7 +7,7 @@ site.
 |------|------------|
 | `website/` | Marketing pages, served at `/`: hand-written HTML, one file per page, CSS inline. |
 | `docs/` | Everything behind `/docs/*`: the manifest, the page shell, the browser components and the pages with no code module of their own. |
-| `api/` | `index.html` for `/api/`, the full-viewport Scalar page. The bundle and the spec are staged into it at build time. |
+| `api/` | `index.html` for `/api/`, the full-viewport Scalar page. The bundle and the spec are staged into it at build time, when the docs sidebar links `/api/`. |
 | `generate/` | The site generator (Go + goldmark). `./dev.sh web build` builds; `./dev.sh web start` builds, serves on :3333 and watches. |
 | `base.css`, `theme.js`, `favicon.png`, `logo.png` | Shared by all three surfaces, which is why they sit here rather than in one of them. |
 | `dist/` | Build output. Git-ignored. |
@@ -38,13 +38,13 @@ one.
 | `/llms.txt` | The site index in the [llms.txt](https://llmstxt.org) format: the tagline, the marketing pages, every doc page with a one-line description, and pointers to the rest. Doc entries link to the twins, not the pages. |
 | `/llms-full.txt` | Every doc page concatenated, each under its source URL. |
 | `/sitemap.xml` | Every page, homepage first. |
-| JSON-LD | `TechArticle` on doc pages, from the template; `SoftwareApplication` with the shipping editions' prices on the homepage, written inline in `website/index.html` beside the prose it mirrors. |
+| JSON-LD | `TechArticle` on doc pages, from the template; `SoftwareApplication` with its price on the homepage, written inline in `website/index.html` beside the prose it mirrors. |
 
 There is nothing to keep in step: a twin **is** its source file, and the
 llms.txt tagline is read out of the homepage's own meta description. The one
 hand-maintained duplicate is the homepage's JSON-LD, which lives in the same
-file as the pricing table so a change to one shows up next to the other in the
-diff.
+file as the prose it restates so a change to one shows up next to the other in
+the diff.
 
 `_headers` gives `.md` an explicit `text/markdown` content type. Without it a
 static host serves markdown as a download, and the `X-Content-Type-Options:
@@ -56,7 +56,7 @@ nosniff` on every response stops the browser from guessing.
 |--------|--------|
 | `/` | Marketing (`website/`) |
 | `/docs/*` | Generated documentation (`docs/`) |
-| `/api/` | API reference (`api/`: Scalar + the generated OpenAPI spec) |
+| `/api/` | API reference (`api/`: Scalar + the generated OpenAPI spec), when the docs sidebar links it |
 
 **Write cross-references with the full path.** In a `.doc.md`, link to
 `/docs/workspace/roles/` — the URL the page actually has. Nothing rewrites links
@@ -155,6 +155,11 @@ build machine, which is why it is not wired up yet.
 
 ## API reference
 
+Published only while `docs/sidebar.txt` links `/api/`. The line is commented
+out: the reference documents the Select server's HTTP API, and the app ships
+without one. Uncommenting it restores the page, its assets and its llms.txt
+line.
+
 `api/index.html` is hand-written, like a marketing page and for the same
 reason: Scalar owns the whole viewport, so there is no docs layout to generate
 it into. It carries the same `/*THEME*/` marker, and the build writes the
@@ -190,7 +195,7 @@ carrying both cuts.
 The specs under `website/` have no `.doc.md` to be named after: their pictures only
 ever appear on the landing page, which is the code they photograph as far as
 this repo is concerned. `Settings/team.shot.ts` is the other exception -- it
-feeds the users, roles and groups pages, so no single one of them names it.
+feeds the users and groups pages, so no single one of them names it.
 
 **The root `package.json` exists for this.** Playwright decides ESM or CJS per
 file from the nearest `package.json`, and the harness the specs share lives

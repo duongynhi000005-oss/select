@@ -125,6 +125,8 @@ for (const theme of THEMES) {
 			test.slow();
 
 			const dir = shotsDirFor(info.file);
+			// The local edition has no proxy: no checkbox, and no third figure.
+			const proxy = process.env.APP_EDITION !== 'local';
 
 			await holdSession(page);
 			await page.goto('/');
@@ -184,7 +186,7 @@ for (const theme of THEMES) {
 			// form this figure is for; nothing has to touch the dialect picker.
 			await expect(page.getByText('PostgreSQL', { exact: true }).first()).toBeVisible();
 			await dsn.fill('host=$PG_HOST port=5432 user=$PG_USER password=$PG_PASS dbname=analytics');
-			await expect(page.getByText('Proxy connection')).toBeVisible();
+			await expect(page.getByText('Proxy connection')).toBeVisible({ visible: proxy });
 
 			await dismissErrors(page);
 			await shot(page, dir, `dbform.local.${theme}`, FRAMING);
@@ -206,28 +208,30 @@ for (const theme of THEMES) {
 			await dismissErrors(page);
 			await shot(page, dir, `dbform.ssh.${theme}`, FRAMING);
 
-			// 3. Proxified: credentials held server-side rather than on the
-			// machine, and the pool tuning that only exists in that mode.
-			await page.getByText('Proxified', { exact: true }).click();
-			await expect(page.getByText('Max open connections')).toBeVisible({ timeout: 15_000 });
-			// Proxifying makes the host key mandatory, because the server is the
-			// one making the connection and has no user to ask about a fingerprint.
-			// ssh-keyscan output, which is the shape the field validates against:
-			// hostname, key type, then the key.
-			await fillLabelled(
-				page,
-				'SSH host key',
-				'bastion.internal ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB6mQ2Xk'
-			);
-			// The authentication method is deliberately left unchosen. Proxifying
-			// clears it -- the agent it defaulted to lives on a laptop the server
-			// cannot reach -- and every remaining method wants a secret, which
-			// would put an empty required field in a figure about pooling.
-			await page.setViewportSize({ width: TALL.width, height: TALL.height });
-			await expect(page.getByText('Max idle time (s, 0 = no limit)')).toBeVisible();
-			await dismissErrors(page);
-			await shot(page, dir, `dbform.proxified.${theme}`, TALL);
-			await page.setViewportSize({ width: FRAMING.width, height: FRAMING.height });
+			if (proxy) {
+				// 3. Proxified: credentials held server-side rather than on the
+				// machine, and the pool tuning that only exists in that mode.
+				await page.getByText('Proxified', { exact: true }).click();
+				await expect(page.getByText('Max open connections')).toBeVisible({ timeout: 15_000 });
+				// Proxifying makes the host key mandatory, because the server is the
+				// one making the connection and has no user to ask about a fingerprint.
+				// ssh-keyscan output, which is the shape the field validates against:
+				// hostname, key type, then the key.
+				await fillLabelled(
+					page,
+					'SSH host key',
+					'bastion.internal ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIB6mQ2Xk'
+				);
+				// The authentication method is deliberately left unchosen. Proxifying
+				// clears it -- the agent it defaulted to lives on a laptop the server
+				// cannot reach -- and every remaining method wants a secret, which
+				// would put an empty required field in a figure about pooling.
+				await page.setViewportSize({ width: TALL.width, height: TALL.height });
+				await expect(page.getByText('Max idle time (s, 0 = no limit)')).toBeVisible();
+				await dismissErrors(page);
+				await shot(page, dir, `dbform.proxified.${theme}`, TALL);
+				await page.setViewportSize({ width: FRAMING.width, height: FRAMING.height });
+			}
 
 			// Put the workspace back. Every capture drives this one workspace, so
 			// a database left behind is a database in every screenshot after it.

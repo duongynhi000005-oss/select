@@ -11,37 +11,33 @@ In the connection form, switch the connection mode to **DSN + SSH tunnel**. This
 | Field           | Description                                              |
 |-----------------|----------------------------------------------------------|
 | **Host**        | Bastion/jump host hostname or IP (not the database host) |
-| **Host key**    | Public key of the SSH server (auto-resolved locally; required for proxified) |
+| **Host key**    | Public key of the SSH server (looked up in `~/.ssh/known_hosts` when empty) |
 | **Port**        | SSH port, defaults to `22`                               |
 | **User**        | System user on the SSH host                              |
 | **Auth method** | `agent`, `key_file`, `password`, or `private_key`        |
 | **Password**    | SSH password (when auth method is password)              |
 | **Private key** | Full PEM key content (when auth method is private_key)   |
-| **Key file**    | Path to a private key on disk (local `key_file` auth; only the path is stored) |
+| **Key file**    | Path to a private key on disk (`key_file` auth; only the path is stored) |
 
 > [!IMPORTANT]
 > The **Host** field refers to the SSH jump host, not the database. The database host goes in the DSN.
 
 ## Authentication methods
 
-Local (non-proxified) connections run on the user's own machine, so SELECT can authenticate without storing any secret:
+SELECT runs on your machine, so it can authenticate without storing any secret:
 
-| Method        | Mode  | Stored | Notes                                                                 |
-|---------------|-------|--------|----------------------------------------------------------------------|
-| `agent`       | local | nothing | Default. Talks to the running agent (unix `SSH_AUTH_SOCK`; the OpenSSH named pipe on Windows). Encrypted and hardware-backed keys (e.g. YubiKey) work, since the agent does the signing. |
-| `key_file`    | local | path only | Reads the key at connect time; prompts for a passphrase if encrypted (held in memory only). |
-| `password`    | both  | value/`$var` | Prefer an `.env` `$variable` over a raw value.                  |
-| `private_key` | both  | value/`$var` | Raw PEM (proxified) or an `.env` `$variable` (local).           |
-
-`agent` and `key_file` are **desktop only**: they read the user's agent / a local file and are rejected when the outbound guard (`EnforceOutboundGuard`) is on, since the proxy server cannot reach the user's machine.
+| Method        | Stored | Notes                                                                 |
+|---------------|--------|----------------------------------------------------------------------|
+| `agent`       | nothing | Default. Talks to the running agent (unix `SSH_AUTH_SOCK`; the OpenSSH named pipe on Windows). Encrypted and hardware-backed keys (e.g. YubiKey) work, since the agent does the signing. |
+| `key_file`    | path only | Reads the key at connect time; prompts for a passphrase if encrypted (held in memory only). |
+| `password`    | value/`$var` | Prefer an `.env` `$variable` over a raw value.                  |
+| `private_key` | value/`$var` | Raw PEM or an `.env` `$variable`; prefer the variable.           |
 
 ## Host key verification
 
-A pinned host key lets SELECT verify, on every connection, that it is reaching the real bastion and not an impostor (a man-in-the-middle). When a host key is pinned, a mismatch aborts the connection. Whether a key is pinned depends on the mode:
+A pinned host key lets SELECT verify, on every connection, that it is reaching the real bastion and not an impostor (a man-in-the-middle). When a host key is pinned, a mismatch aborts the connection.
 
-**Local connections** pin automatically when possible: at connect time SELECT looks the host up in `~/.ssh/known_hosts` and pins that key, reusing the trust your own `ssh` client already established, so there is nothing to fill in. If the host is **not** in `known_hosts`, there is no key to pin, so the connection proceeds **unverified**. To get verification, pin the key first: either `ssh` to the host once so it lands in `known_hosts`, or set `host_key` in `datasource.config.json` directly.
-
-**Proxified connections** always require a pinned key, they refuse to connect without one. The server connects on your behalf and has no access to your machine, so you must supply the key upfront. Get it by running:
+SELECT pins automatically when possible: at connect time it looks the host up in `~/.ssh/known_hosts` and pins that key, reusing the trust your own `ssh` client already established, so there is nothing to fill in. If the host is **not** in `known_hosts`, there is no key to pin, so the connection proceeds **unverified**. To get verification, either `ssh` to the host once so it lands in `known_hosts`, or paste its key into the **Host key** field. Get the key by running:
 
 ```bash
 ssh-keyscan bastion.example.com

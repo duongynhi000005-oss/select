@@ -44,6 +44,3 @@ Variables are resolved by walking up the folder hierarchy. A `.env` file in a pa
 ## Applying changes
 
 After editing the `.env` file, click **Apply** to reload variables. To restore the built-in defaults, click **Reset**.
-
-> [!WARNING]
-> Variables from `.env` are **not available in proxified mode**. Proxified connections store credentials server-side.

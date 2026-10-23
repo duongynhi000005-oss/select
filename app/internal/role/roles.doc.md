@@ -1,27 +1,24 @@
 # Roles
 
-Roles group [permissions](/docs/workspace/permissions/) together and are assigned to [users](/docs/workspace/users/), either directly or through [groups](/docs/workspace/groups/). Each workspace defines its own roles.
+A role is a named set of [permissions](/docs/workspace/permissions/). The rules
+SELECT checks are those of the roles assigned to you, so a role does nothing
+until you hold it. On your own machine, that makes roles guardrails you set on
+yourself.
 
-![The workspace's roles: three of them, each with the users holding it, the number of groups carrying it, and how many permission rules it is made of.](/shots/team.roles.light.webp)
+## Creating a role
 
-## Creating roles
+Open **Settings → Roles** and click **New role**. Give it a name, unique within
+the workspace, then tick the rules it carries. You can also **duplicate** an
+existing role and adjust it.
 
-Create a role from the team management interface. Give it a name (must be unique within the workspace) and assign permissions.
+Then click **Add user** at the top of the role and add yourself.
 
-You can also **duplicate** an existing role to use it as a starting point, then adjust permissions as needed.
+## Holding several roles
 
-## Assigning users
-
-A role can have multiple users, and a user can have multiple roles. Assign a role to a user directly, or attach it to a [group](/docs/workspace/groups/) so every member inherits it. Permissions from all of a user's roles, direct and group-derived, are combined.
-
-## Examples
-
-Common patterns:
-
-- **Read-only**: a role with `SELECT` on all databases, no write permissions
-- **Developer**: `SELECT`, `INSERT`, `UPDATE`, `DELETE` on development databases
-- **DBA**: full database permissions including `DDL` (schema changes)
-- **Admin**: workspace-level permissions for managing users and roles
+Rules from all the roles you hold are combined, and a deny always wins over an
+allow. See [Allow and deny](/docs/workspace/permissions/#allow-and-deny), and
+[Example setup](/docs/workspace/permissions/#example-setup) for a read-only
+production database and a masked column.
 
 > [!NOTE]
 > Roles have no hierarchy or inheritance. Each role is a flat set of permissions.

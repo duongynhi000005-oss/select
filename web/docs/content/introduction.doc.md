@@ -1,6 +1,6 @@
 # Getting Started
 
-SELECT is an SQL client shaped like an IDE. Schema-aware completion, real-time linting, [git-based](/docs/workspace/git/) team workspaces with granular DB [permissions](/docs/workspace/permissions/), local and [proxified connections](/docs/databases/proxified-connections/).
+SELECT is an SQL client shaped like an IDE. Schema-aware completion, real-time linting, workspaces you share through [git](/docs/workspace/git/), and [permissions](/docs/workspace/permissions/) you can set on yourself so a production database stays read-only. It runs entirely on your machine: no account, no sign-in, no server.
 
 
 This guide takes you from download to your first query in about five minutes.
@@ -45,7 +45,7 @@ everything else alone; an empty folder also gets a small sample database to run
 queries against.
 
 See [Workspace Folder](/docs/workspace/workspace-folder/) for sharing one with a
-team.
+team through git.
 
 ## 4. Connect your first database
 
@@ -92,8 +92,8 @@ You're up and running.
 
 ## Where to go next {.cards}
 
-- [Connecting a Database](/docs/databases/connecting/): SSH tunnels, proxified connections, and schema introspection.
+- [Connecting a Database](/docs/databases/connecting/): DSNs, SSH tunnels, and schema introspection.
 - [Git Workspaces](/docs/workspace/git/): version-control your queries and share them with your team.
-- [Permissions](/docs/workspace/permissions/): granular, per-database access control.
-- [Query Execution](/docs/sql/query-execution/): timeouts, result limits, streaming, and caching.
+- [Permissions](/docs/workspace/permissions/): guardrails, down to a column, on what you can run.
+- [Query Execution](/docs/sql/query-execution/): timeouts, result limits, and caching.
 - [SQL Files](/docs/sql/sql-files/): file associations, snippets, and editor shortcuts.
