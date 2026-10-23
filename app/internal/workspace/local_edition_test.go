@@ -51,7 +51,12 @@ func newLocalWorkspace(t *testing.T) (*Workspace, string) {
 	if err := q.SetCurrentUser(ctx, u.ID); err != nil {
 		t.Fatalf("set current user: %v", err)
 	}
-	return New(q, nil), u.ID
+	w := New(q, nil)
+	w.PullFunc = func(context.Context, string) error {
+		t.Error("the local edition pulled from a server")
+		return nil
+	}
+	return w, u.ID
 }
 
 // A folder with content of its own, so opening it seeds no sample.

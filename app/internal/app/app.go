@@ -15,7 +15,6 @@ import (
 	"selectDb/internal/db"
 	"selectDb/internal/db/generated"
 	"selectDb/internal/db/syncer"
-	"selectDb/internal/edition"
 	"selectDb/internal/graph"
 	"selectDb/internal/utils"
 
@@ -165,11 +164,7 @@ func (a *App) ServiceStartup(ctx context.Context, _ application.ServiceOptions) 
 	a.Syncer.EmitRolesUpdated = func() {
 		utils.DebouncedEventsEmit("rolesUpdated", 100*time.Millisecond)
 	}
-	// Left unset in the local edition, where opening an unknown folder adopts it
-	// instead of asking a server.
-	if !edition.Local {
-		a.Workspace.PullFunc = a.Syncer.Pull
-	}
+	a.Workspace.PullFunc = a.Syncer.Pull
 	a.Workspace.ReloadHooks = &workspace.ReloadHooks{
 		BuildWorkspaceGraph: a.Graph.RebuildWorkspaceGraph,
 		EmitWorkspaceGraphUpdated: func() {

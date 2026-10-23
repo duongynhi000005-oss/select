@@ -130,7 +130,7 @@ func (w *Workspace) OpenFolder(path string) (FolderState, error) {
 // isMember reads the membership row, not the workspace row: revoking access
 // deletes the first and leaves the second. A miss pulls first, because a
 // teammate who just cloned has the folder before the local database has the
-// workspace.
+// workspace. The local edition has nowhere to pull from, and adopts instead.
 func (w *Workspace) isMember(userID, workspaceID string) (bool, error) {
 	ctx := context.Background()
 
@@ -139,7 +139,7 @@ func (w *Workspace) isMember(userID, workspaceID string) (bool, error) {
 		return member, err
 	}
 
-	if w.PullFunc == nil {
+	if w.PullFunc == nil || edition.Local {
 		return false, nil
 	}
 	if err := w.PullFunc(ctx, userID); err != nil {
