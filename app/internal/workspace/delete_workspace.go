@@ -10,7 +10,8 @@ import (
 )
 
 // DeleteWorkspace removes the workspace on the server, its local rows, and the
-// select.config.json that named it. The folder is left as it was.
+// select.config.json that named it. The folder is left as it was. The local
+// edition has no server copy to remove.
 //
 // A config can outlive its workspace when the delete happened on another
 // machine. Opening that folder reports no access and leaves the config alone.

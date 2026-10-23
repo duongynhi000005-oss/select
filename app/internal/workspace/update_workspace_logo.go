@@ -17,7 +17,8 @@ type logoResponse struct {
 
 // UpdateLogo uploads a logo, then mirrors what the server stored — the
 // re-encoded image, not the caller's bytes — into the local database. Teammates
-// get it on their next pull, since the endpoint bumps updated_at.
+// get it on their next pull, since the endpoint bumps updated_at. The local
+// edition stores the caller's PNG as given.
 //
 // The local write is untracked (@no-track in the query): the sync path does not
 // carry the logo column, so a tracked one would queue a commit that never applies.

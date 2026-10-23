@@ -25,8 +25,8 @@ func currentServerFilePath() (string, error) {
 }
 
 // ReadCurrentDomain returns the current server domain from the file, or empty if unset.
-// The local edition ignores the file, which a pro install on the same machine
-// shares.
+// The local edition ignores the file, which a signed-in install on the same
+// machine shares.
 func ReadCurrentDomain() (string, error) {
 	if edition.Local {
 		return LocalDomain, nil
