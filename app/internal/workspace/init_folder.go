@@ -8,8 +8,10 @@ import (
 	"path/filepath"
 
 	"selectDb/internal/api"
+	"selectDb/internal/edition"
 	"selectDb/internal/graph"
 	"selectDb/internal/server"
+	"selectDb/internal/utils"
 )
 
 type createWorkspaceResponse struct {
@@ -19,8 +21,9 @@ type createWorkspaceResponse struct {
 	OwnerID           string `json:"owner_id"`
 }
 
-// CreateWorkspaceInFolder creates the workspace on the server, writes the config
-// that names it, and opens it. An empty name defaults to the folder's.
+// CreateWorkspaceInFolder creates the workspace on the server, or locally in the
+// local edition, writes the config that names it, and opens it. An empty name
+// defaults to the folder's.
 func (w *Workspace) CreateWorkspaceInFolder(path, name string) (FolderState, error) {
 	folder, err := resolveFolder(path)
 	if err != nil {
@@ -48,7 +51,9 @@ func (w *Workspace) CreateWorkspaceInFolder(path, name string) (FolderState, err
 	}
 
 	var resp createWorkspaceResponse
-	if err := api.Fetch(ctx, "POST", "workspaces", map[string]string{"name": name}, nil, &resp); err != nil {
+	if edition.Local {
+		resp = createWorkspaceResponse{ID: utils.GenerateUUID(), WorkspaceToUserID: utils.GenerateUUID(), Name: name}
+	} else if err := api.Fetch(ctx, "POST", "workspaces", map[string]string{"name": name}, nil, &resp); err != nil {
 		return FolderState{}, fmt.Errorf("create workspace on server: %w", err)
 	}
 

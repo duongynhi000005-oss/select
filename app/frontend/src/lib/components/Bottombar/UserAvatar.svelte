@@ -4,31 +4,39 @@
 	import { Logout } from '$lib/bindings/selectDb/internal/system/system';
 	import { currentUserStore } from '$lib/stores/currentUserStore';
 	import { openSettingsSection } from '$lib/components/Layout/layoutStore';
+	import { localEditionStore } from '$lib/stores/editionStore';
 
 	// The signed-in user rather than a workspace member, since this renders with
 	// no folder open.
 	const user = $derived($currentUserStore);
 
-	const options: ContextMenuOption[] = [
-		{
-			label: 'Settings',
-			action: (onclose) => {
-				openSettingsSection();
-				onclose();
-			}
-		},
-		{
-			label: '',
-			divider: true
-		},
-		{
-			label: 'Log out',
-			action: async (onclose) => {
-				await Logout();
-				onclose();
-			}
+	const settings: ContextMenuOption = {
+		label: 'Settings',
+		action: (onclose) => {
+			openSettingsSection();
+			onclose();
 		}
-	];
+	};
+
+	// The local edition has no session to end.
+	const options = $derived<ContextMenuOption[]>(
+		$localEditionStore
+			? [settings]
+			: [
+					settings,
+					{
+						label: '',
+						divider: true
+					},
+					{
+						label: 'Log out',
+						action: async (onclose) => {
+							await Logout();
+							onclose();
+						}
+					}
+				]
+	);
 </script>
 
 {#if user}

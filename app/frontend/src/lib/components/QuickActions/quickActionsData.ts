@@ -1,4 +1,4 @@
-import { get } from 'svelte/store';
+import { derived, get } from 'svelte/store';
 import {
 	addTempFileTab,
 	addSchemaTab,
@@ -7,7 +7,7 @@ import {
 	openSettingsSection
 } from '$lib/components/Layout/layoutStore';
 import { workspaceGraphStore } from '$lib/utils/graph/workspaceGraphStore';
-import { settingsSections } from '$lib/components/views/Settings/sections';
+import { offeredSettingsSections } from '$lib/components/views/Settings/sections';
 import type { ResourceMenuOption } from '$lib/components/ResourceMenu/types';
 import type * as graph from '$lib/wails/graph';
 
@@ -66,13 +66,17 @@ export const quickActions: ResourceMenuOption[] = [
 ];
 
 // Per-section settings shortcuts. Surfaced only in search, not the empty state.
-export const settingsQuickActions: ResourceMenuOption[] = settingsSections.map((s) => ({
-	id: `${SETTINGS_SECTION_PREFIX}${s.id}`,
-	label: `Settings: ${s.label}`,
-	type: 'quick_action' as const,
-	uri: '',
-	node: createQuickActionNode('quick_action:settings', `Settings: ${s.label}`)
-}));
+export const settingsQuickActions = derived(offeredSettingsSections, (sections) =>
+	sections.map(
+		(s): ResourceMenuOption => ({
+			id: `${SETTINGS_SECTION_PREFIX}${s.id}`,
+			label: `Settings: ${s.label}`,
+			type: 'quick_action' as const,
+			uri: '',
+			node: createQuickActionNode('quick_action:settings', `Settings: ${s.label}`)
+		})
+	)
+);
 
 export function executeQuickAction(option: ResourceMenuOption): void {
 	if (option.type !== 'quick_action') return;

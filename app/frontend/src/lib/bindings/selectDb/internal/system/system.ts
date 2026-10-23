@@ -109,6 +109,14 @@ export function GetZoom(): $CancellablePromise<number> {
 }
 
 /**
+ * IsLocalEdition reports a build without a Select server, whose frontend offers
+ * nothing that needs one.
+ */
+export function IsLocalEdition(): $CancellablePromise<boolean> {
+    return $Call.ByID(537914247);
+}
+
+/**
  * LoadAllDatasourceSchemas runs QuerySchema for each workspace datasource (same as after other graph rebuilds).
  */
 export function LoadAllDatasourceSchemas(wsGraph: graph$0.WorkspaceNode | null): $CancellablePromise<void> {

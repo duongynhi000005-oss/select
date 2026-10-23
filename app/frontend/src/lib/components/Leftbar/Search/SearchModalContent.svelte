@@ -141,7 +141,7 @@
 			width={470}
 			maxHeight={PANEL_MAX_HEIGHT}
 			noBorder
-			extraOptions={[...quickActions, ...settingsQuickActions]}
+			extraOptions={[...quickActions, ...$settingsQuickActions]}
 			{searchScope}
 		/>
 	</div>

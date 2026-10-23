@@ -22,8 +22,9 @@ export function CloseFolder(): $CancellablePromise<void> {
 }
 
 /**
- * CreateWorkspaceInFolder creates the workspace on the server, writes the config
- * that names it, and opens it. An empty name defaults to the folder's.
+ * CreateWorkspaceInFolder creates the workspace on the server, or locally in the
+ * local edition, writes the config that names it, and opens it. An empty name
+ * defaults to the folder's.
  */
 export function CreateWorkspaceInFolder(path: string, name: string): $CancellablePromise<$models.FolderState> {
     return $Call.ByID(1466431544, path, name).then(($result: any) => {

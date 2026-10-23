@@ -4,8 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"log"
+	"os/user"
+
 	"selectDb/internal/api"
+	"selectDb/internal/db/db_types"
+	"selectDb/internal/db/generated"
+	"selectDb/internal/edition"
 	"selectDb/internal/graph"
+	"selectDb/internal/utils"
 
 	"selectDb/internal/desktop"
 )
@@ -41,6 +48,9 @@ func (s *System) CheckForLogout() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	if edition.Local {
+		return
+	}
 	if api.ReadCredentialStatus() == api.CredentialsMissing {
 		s.closeOpenFolder()
 		desktop.Emit("logout")
@@ -51,14 +61,23 @@ func (s *System) CheckForLogin() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
-	if api.ReadCredentialStatus() != api.CredentialsPresent {
-		return
-	}
-
 	ctx := s.ctx
 	if ctx == nil {
 		ctx = context.Background()
 	}
+
+	// No event in the local edition: the frontend signs in when this returns.
+	if edition.Local {
+		if err := s.ensureLocalUser(ctx); err != nil {
+			log.Printf("local user: %v", err)
+		}
+		return
+	}
+
+	if api.ReadCredentialStatus() != api.CredentialsPresent {
+		return
+	}
+
 	_, err := s.Queries.GetCurrentUser(ctx)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -68,4 +87,32 @@ func (s *System) CheckForLogin() {
 		return
 	}
 	desktop.Emit("login")
+}
+
+// ensureLocalUser stands in for the sign-in the local edition does not have:
+// everything keyed on the current user then works as it does after one.
+func (s *System) ensureLocalUser(ctx context.Context) error {
+	_, err := s.Queries.GetCurrentUser(ctx)
+	if !errors.Is(err, sql.ErrNoRows) {
+		return err
+	}
+
+	name := "Local"
+	if u, err := user.Current(); err == nil {
+		switch {
+		case u.Name != "":
+			name = u.Name
+		case u.Username != "":
+			name = u.Username
+		}
+	}
+
+	created, err := s.Queries.UpsertUser(ctx, generated.UpsertUserParams{
+		ID:   utils.GenerateUUID(),
+		Name: db_types.NewJSONNullString(name),
+	})
+	if err != nil {
+		return err
+	}
+	return s.Queries.SetCurrentUser(ctx, created.ID)
 }

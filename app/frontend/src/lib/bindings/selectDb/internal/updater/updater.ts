@@ -19,8 +19,8 @@ export function Apply(): $CancellablePromise<void> {
 }
 
 /**
- * CheckVersion fetches /version and emits an "available" event if a newer
- * version exists. Does not download or install anything.
+ * CheckVersion fetches the latest version and emits an "available" event if it
+ * is newer. Does not download or install anything.
  */
 export function CheckVersion(): $CancellablePromise<void> {
     return $Call.ByID(1582590550);

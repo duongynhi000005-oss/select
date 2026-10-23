@@ -13,7 +13,12 @@ import { loadMyPermissions, clearMyPermissions } from '$lib/stores/myPermissions
 import { loadCurrentUser, clearCurrentUser } from '$lib/stores/currentUserStore';
 import { modalStore } from '$lib/system/Modal/ModalStore';
 import { tryCatch } from '$lib/utils/tryCatch';
-import { CheckForLogin, CheckForLogout } from '$lib/bindings/selectDb/internal/system/system';
+import {
+	CheckForLogin,
+	CheckForLogout,
+	IsLocalEdition
+} from '$lib/bindings/selectDb/internal/system/system';
+import { localEditionStore } from '$lib/stores/editionStore';
 import { EventsOn } from '$lib/wails/events';
 import { stripNullItems, type WorkspaceNode } from '$lib/wails/graph';
 import { get, writable } from 'svelte/store';
@@ -57,7 +62,7 @@ EventsOn('workspaceClosed', () => {
 	void onFolderClosed();
 });
 
-EventsOn('login', async () => {
+const onLogin = async () => {
 	if (sessionState === 'loggedin') return;
 	sessionState = 'loggedin';
 
@@ -72,12 +77,19 @@ EventsOn('login', async () => {
 	await reopenLastFolder();
 
 	modalStore.set(null);
-	logoutPollInterval = setInterval(() => CheckForLogout(), 500);
+	if (!get(localEditionStore)) logoutPollInterval = setInterval(() => CheckForLogout(), 500);
 	await Promise.all([permissions, user]);
-});
+};
+
+EventsOn('login', onLogin);
 
 export const setupSessionWall = async () => {
+	const [local] = await tryCatch(IsLocalEdition);
+	localEditionStore.set(local === true);
 	await tryCatch(CheckForLogin);
+	// Signed in here rather than on an event, so the loader holds until the
+	// folder is back instead of showing the login page in between.
+	if (local) await onLogin();
 	sessionCheckingStore.set(false);
 };
 

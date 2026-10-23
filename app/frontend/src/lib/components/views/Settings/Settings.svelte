@@ -10,7 +10,7 @@
 	import UserSettingsEditor from '$lib/components/views/Settings/UserSettingsEditor.svelte';
 	import { activeGroupStore, updateSettingsTab } from '$lib/components/Layout/layoutStore';
 	import { myPermissions } from '$lib/stores/myPermissionsStore';
-	import { settingsSections, type SettingsSectionId } from './sections';
+	import { offeredSettingsSections, type SettingsSectionId } from './sections';
 
 	const saved = $activeGroupStore?.tabs.find((t) => t.uri === 'selectdb://settings')?.settings;
 	let selectedSection = $state<SettingsSectionId>(
@@ -26,8 +26,8 @@
 	});
 
 	function canAccess(id: SettingsSectionId): boolean {
-		const action = settingsSections.find((s) => s.id === id)?.action;
-		return !action || $myPermissions.isAllowed(action);
+		const section = $offeredSettingsSections.find((s) => s.id === id);
+		return !!section && (!section.action || $myPermissions.isAllowed(section.action));
 	}
 
 	function selectSection(id: SettingsSectionId) {
@@ -38,7 +38,7 @@
 
 <div class="settings-view">
 	<nav class="settings-nav">
-		{#each settingsSections as section (section.id)}
+		{#each $offeredSettingsSections as section (section.id)}
 			<Button
 				content={section.label}
 				leftIcon={section.icon}

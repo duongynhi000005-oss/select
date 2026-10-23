@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"selectDb/internal/db/generated"
+	"selectDb/internal/edition"
 	"selectDb/internal/utils"
 )
 
@@ -51,6 +52,19 @@ func (s *Syncer) CommitMutation(params *QueueMutationParams) error {
 			return nil
 		}
 		return fmt.Errorf("failed to get current workspace-to-user: %w", err)
+	}
+
+	commit := generated.MutationCommit{
+		Operation: operation,
+		TableName: tableName,
+		ObjectID:  objectID,
+		Payload:   payload,
+	}
+
+	// Nothing to queue without a server: the graph is the only reader.
+	if edition.Local {
+		_ = s.pushCommitToFrontend(commit)
+		return nil
 	}
 
 	// Look for existing queued mutation
@@ -100,12 +114,7 @@ func (s *Syncer) CommitMutation(params *QueueMutationParams) error {
 		}
 	}
 
-	_ = s.pushCommitToFrontend(generated.MutationCommit{
-		Operation: operation,
-		TableName: tableName,
-		ObjectID:  objectID,
-		Payload:   payload,
-	})
+	_ = s.pushCommitToFrontend(commit)
 
 	s.debouncedSync(currentWTU.UserID)
 	return nil

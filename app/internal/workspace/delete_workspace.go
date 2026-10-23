@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"selectDb/internal/api"
+	"selectDb/internal/edition"
 	"selectDb/internal/graph"
 )
 
@@ -23,8 +24,10 @@ func (w *Workspace) DeleteWorkspace(workspaceID string) error {
 		folder = root
 	}
 
-	if err := api.Fetch(ctx, "DELETE", "workspaces/"+workspaceID, nil, api.WorkspaceHeader(workspaceID), nil); err != nil {
-		return fmt.Errorf("delete workspace on server: %w", err)
+	if !edition.Local {
+		if err := api.Fetch(ctx, "DELETE", "workspaces/"+workspaceID, nil, api.WorkspaceHeader(workspaceID), nil); err != nil {
+			return fmt.Errorf("delete workspace on server: %w", err)
+		}
 	}
 
 	if err := w.Queries.DeleteWorkspaceToUserByWorkspaceID(ctx, workspaceID); err != nil {

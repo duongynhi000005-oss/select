@@ -5,6 +5,9 @@ version: '3'
 #
 # Build metadata is injected through vars, e.g.
 #   wails3 task build APP_VERSION=1.2.3 APP_ENV=production MINISIGN_PUBLIC_KEY=...
+#
+# APP_EDITION=local builds the app that runs without a Select server. Any other
+# value, or none, builds the edition that signs in to one.
 
 vars:
   APP_NAME: 'select'
@@ -15,9 +18,10 @@ vars:
 
   APP_VERSION: '{{.APP_VERSION | default "dev"}}'
   APP_ENV: '{{.APP_ENV | default "dev"}}'
+  APP_EDITION: '{{.APP_EDITION | default "pro"}}'
   MINISIGN_PUBLIC_KEY: '{{.MINISIGN_PUBLIC_KEY | default ""}}'
 
-  META_LDFLAGS: '-X main.appVersion={{.APP_VERSION}} -X main.appEnv={{.APP_ENV}} -X selectDb/internal/updater.minisignPublicKey={{.MINISIGN_PUBLIC_KEY}}'
+  META_LDFLAGS: '-X main.appVersion={{.APP_VERSION}} -X main.appEnv={{.APP_ENV}} -X main.appEdition={{.APP_EDITION}} -X selectDb/internal/updater.minisignPublicKey={{.MINISIGN_PUBLIC_KEY}}'
 
 tasks:
   generate:bindings:

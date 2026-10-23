@@ -7,6 +7,7 @@ import (
 	"selectDb/internal/api"
 	"selectDb/internal/db/db_types"
 	"selectDb/internal/db/generated"
+	"selectDb/internal/edition"
 )
 
 // A pointer so a response missing the field reads as nil, not as an empty logo.
@@ -22,6 +23,12 @@ type logoResponse struct {
 // carry the logo column, so a tracked one would queue a commit that never applies.
 func (w *Workspace) UpdateLogo(workspaceID, logo string) error {
 	ctx := context.Background()
+
+	// No server to re-encode it. The frontend already draws it into a 128x128
+	// PNG, and the column's CHECK refuses anything that is not one.
+	if edition.Local {
+		return w.storeLogoLocally(ctx, workspaceID, logo)
+	}
 
 	var res logoResponse
 	if err := api.Fetch(ctx, "PUT", "workspaces/"+workspaceID+"/logo",
