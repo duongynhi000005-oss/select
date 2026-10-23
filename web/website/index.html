@@ -28,7 +28,7 @@
   <!-- The facts on this page, stated once more in a form a machine can read
      without inferring them from the layout: what the product is, where it
      runs, and what it costs. Kept in this file, beside the prose it mirrors,
-     so a change to one and its structured form land in one diff. -->
+     so a change to the prose and its structured form land in one diff. -->
   <script type="application/ld+json">
 {"@context":"https://schema.org","@type":"SoftwareApplication",
 "name":"SELECT","applicationCategory":"DeveloperApplication",
@@ -429,29 +429,6 @@
       color: var(--red)
     }
 
-    /* The third weight: no box at all, for a tier that cannot be bought yet and
-   should not compete with the two that can. */
-    .btn.q {
-      background: none;
-      border-color: transparent;
-      box-shadow: none;
-      color: var(--gray-900);
-      padding-inline: 0;
-      text-decoration: underline;
-      text-decoration-color: transparent;
-      text-underline-offset: 3px
-    }
-
-    /* The dark-mode halo is set on .btn by a selector that outranks .btn.q. */
-    :root[data-theme=dark] .btn.q {
-      box-shadow: none
-    }
-
-    .btn.q:hover {
-      color: var(--red);
-      text-decoration-color: currentColor
-    }
-
     .btn.b {
       font-size: var(--t3);
       padding: 13px 22px
@@ -620,12 +597,6 @@
 
     .row p+p {
       margin-top: var(--s2)
-    }
-
-    /* .row p is the more specific selector, so the aside keeps its own colour
-       only if it is named here too. */
-    .row p.fine {
-      color: var(--gray-800)
     }
 
     .row a,
@@ -847,7 +818,7 @@
           <p>The chat panel reads your schema and your files, writes the query, and runs it. It talks to
             the model you choose, with your own API key, straight from your machine.</p>
           <p>It runs as you, so the limits you set on yourself bound it too, down to the column. Ask it for
-            customer emails on a database where you masked them and the answer is no.</p>
+            customer emails on a database where you denied yourself that column and the answer is no.</p>
           <a href="/docs/workspace/ai-chat/">AI chat →</a>
         </div>
         <figure>

@@ -181,6 +181,12 @@ func seed(dataDir, domain string) error {
 	if err := server.WriteCurrentDomain(domain); err != nil {
 		return fmt.Errorf("select server %q: %w", domain, err)
 	}
+	// Read back: a local edition build reads its own domain whatever the file
+	// says, and the fixture has to be where the app looks.
+	domain, err := server.ReadCurrentDomain()
+	if err != nil {
+		return err
+	}
 
 	dbPath, err := server.ServerDBPath(domain)
 	if err != nil {

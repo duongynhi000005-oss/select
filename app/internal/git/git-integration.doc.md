@@ -83,6 +83,3 @@ carry them. SELECT keeps them in its own database on your machine:
 
 Each teammate sets their own. A guardrail you put on a production database
 protects you, not everyone who clones the repository.
-
-> [!NOTE]
-> Git syncs your **files**. Everything else in a workspace is yours alone.

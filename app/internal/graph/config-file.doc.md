@@ -7,7 +7,7 @@ SELECT's per-user config directory and follows you across every workspace.
 > [!IMPORTANT]
 > Execution limits (`statement_timeout_ms`, `max_result_size_mb`) are **not** in
 > `.config`. They belong to the workspace and are configured in
-> **Settings → Workspace** (see [Execution limits](#execution-limits) below).
+> **Settings → Workspace** (see [Query Execution](/docs/sql/query-execution/#limits)).
 
 ## Where the file lives
 
@@ -26,17 +26,6 @@ You don't need to find it on disk: open it from **Settings → Config**.
   "editor_snippets": [ ... ]
 }
 ```
-
-## Execution limits
-
-Execution limits are **workspace** settings, kept on your machine like roles
-and permissions rather than in the folder, and edited in
-**Settings → Workspace**:
-
-| Field                    | Default | Description                                         |
-|--------------------------|---------|-----------------------------------------------------|
-| **statement_timeout_ms** | 30000   | Max query execution time in milliseconds            |
-| **max_result_size_mb**   | 100     | Max result set size in MB before truncation (max 250)|
 
 ## Keybindings
 

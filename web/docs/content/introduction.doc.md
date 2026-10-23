@@ -95,5 +95,5 @@ You're up and running.
 - [Connecting a Database](/docs/databases/connecting/): DSNs, SSH tunnels, and schema introspection.
 - [Git Workspaces](/docs/workspace/git/): version-control your queries and share them with your team.
 - [Permissions](/docs/workspace/permissions/): guardrails, down to a column, on what you can run.
-- [Query Execution](/docs/sql/query-execution/): timeouts, result limits, streaming, and caching.
+- [Query Execution](/docs/sql/query-execution/): timeouts, result limits, and caching.
 - [SQL Files](/docs/sql/sql-files/): file associations, snippets, and editor shortcuts.

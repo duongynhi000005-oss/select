@@ -6,7 +6,7 @@ Permissions limit what you can run against your databases, down to a single colu
 
 ## Permission levels
 
-Permissions are hierarchical. You can grant or deny access at five levels, from broad to specific:
+Permissions are hierarchical. You can grant or deny access at four levels, from broad to specific:
 
 | Level       | Scope                                           |
 |-------------|--------------------------------------------------|
@@ -104,7 +104,7 @@ Evaluation order:
 4. If an allow matches, access is granted
 5. If neither matches, access is refused (default deny)
 
-This lets you start broad and add targeted restrictions. For example, a "Developer" role can allow every action on production, while a "Careful" role adds a deny on `MANAGE` there. Holding both, you cannot change the schema on production.
+This lets you start broad and add targeted restrictions. For example, a "Developer" role can allow every action on production, while a "No schema changes" role adds a deny on `MANAGE` there. Holding both, you cannot change the schema on production.
 
 The first four actions are about the rows in a table. MANAGE is about the
 database itself: creating, altering and dropping tables, granting access,

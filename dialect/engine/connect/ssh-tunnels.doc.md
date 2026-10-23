@@ -37,9 +37,7 @@ SELECT runs on your machine, so it can authenticate without storing any secret:
 
 A pinned host key lets SELECT verify, on every connection, that it is reaching the real bastion and not an impostor (a man-in-the-middle). When a host key is pinned, a mismatch aborts the connection.
 
-SELECT pins automatically when possible: at connect time SELECT looks the host up in `~/.ssh/known_hosts` and pins that key, reusing the trust your own `ssh` client already established, so there is nothing to fill in. If the host is **not** in `known_hosts`, there is no key to pin, so the connection proceeds **unverified**. To get verification, pin the key first: either `ssh` to the host once so it lands in `known_hosts`, or set `host_key` in `datasource.config.json` directly.
-
-To pin a key yourself, get it by running:
+SELECT pins automatically when possible: at connect time it looks the host up in `~/.ssh/known_hosts` and pins that key, reusing the trust your own `ssh` client already established, so there is nothing to fill in. If the host is **not** in `known_hosts`, there is no key to pin, so the connection proceeds **unverified**. To get verification, either `ssh` to the host once so it lands in `known_hosts`, or paste its key into the **Host key** field. Get the key by running:
 
 ```bash
 ssh-keyscan bastion.example.com

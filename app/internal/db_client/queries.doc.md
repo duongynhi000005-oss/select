@@ -14,13 +14,7 @@ your machine rather than in the folder) control execution bounds:
 
 When a timeout fires, SELECT cancels the query on the database side. If the result exceeds the size limit, it is truncated and a notice is shown.
 
-Set `statement_timeout_ms` to `0` to disable the timeout entirely. This is useful for long-running migrations or bulk operations.
-
-### Long-running statements
-
-For a migration, a bulk insert or an index rebuild, keep `statement_timeout_ms`
-high enough to cover the expected duration, or set it to `0`. There is no
-progress indicator for DDL statements that return no rows.
+Set `statement_timeout_ms` to `0` to disable the timeout entirely. This is useful for long-running migrations or bulk operations. There is no progress indicator for DDL statements that return no rows.
 
 ## Result caching
 
