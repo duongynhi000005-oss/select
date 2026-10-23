@@ -44,7 +44,7 @@ env:
   MIN_APP_VERSION: 0.0.0
   # The repository variable APP_EDITION. `local` builds and releases the app
   # that runs without a Select server; unset, it builds the one that signs in.
-  APP_EDITION: ${{ vars.APP_EDITION || 'pro' }}
+  APP_EDITION: ${{ vars.APP_EDITION }}
 
 jobs:
   plan:
@@ -693,7 +693,7 @@ jobs:
           name: "Staging (latest)"
           prerelease: true
           files: dist/*
-          body: ${{ env.APP_EDITION == 'local' && 'Latest local edition build from the dev branch. Devtools enabled.' || 'Latest build from the dev branch. Connects to staging API. Devtools enabled.' }}
+          body: "Latest build from the dev branch. ${{ env.APP_EDITION == 'local' && 'Local edition.' || 'Connects to staging API.' }} Devtools enabled."
 
   draft-release:
     name: Create prod release

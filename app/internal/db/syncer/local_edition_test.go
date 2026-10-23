@@ -18,14 +18,9 @@ func TestLocalEditionQueuesNoCommit(t *testing.T) {
 	t.Cleanup(func() { edition.Local = false })
 
 	db := newTestDB(t)
-	for _, q := range []string{
-		`INSERT INTO user (id, name, current) VALUES ('u1', 'Ada', 1)`,
-		`INSERT INTO workspace (id, name) VALUES ('ws1', 'WS')`,
-		`INSERT INTO workspace_to_user (id, workspace_id, user_id, current) VALUES ('wtu1', 'ws1', 'u1', 1)`,
-	} {
-		_, err := db.Exec(q)
-		require.NoError(t, err)
-	}
+	seedCurrentUser(t, db, "u1", "Ada")
+	seedWorkspace(t, db, "ws1", "WS")
+	seedWorkspaceToUser(t, db, "wtu1", "ws1", "u1", true)
 
 	queries := generated.New(db)
 	s := &Syncer{Queries: queries, Graph: graph.New(queries)}

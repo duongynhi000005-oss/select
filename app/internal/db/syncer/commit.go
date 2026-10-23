@@ -43,17 +43,6 @@ func (s *Syncer) CommitMutation(params *QueueMutationParams) error {
 		return fmt.Errorf("failed to marshal args for new mutation: %w", err)
 	}
 
-	ctx := context.Background()
-	currentWTU, err := s.Queries.GetCurrentWorkspaceToUser(ctx)
-	if err != nil {
-		if err == sql.ErrNoRows {
-			// Backend creates first workspace + workspace_to_user on signup
-			// app pulls them via Sync, nothing to enqueue
-			return nil
-		}
-		return fmt.Errorf("failed to get current workspace-to-user: %w", err)
-	}
-
 	commit := generated.MutationCommit{
 		Operation: operation,
 		TableName: tableName,
@@ -65,6 +54,17 @@ func (s *Syncer) CommitMutation(params *QueueMutationParams) error {
 	if edition.Local {
 		_ = s.pushCommitToFrontend(commit)
 		return nil
+	}
+
+	ctx := context.Background()
+	currentWTU, err := s.Queries.GetCurrentWorkspaceToUser(ctx)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			// Backend creates first workspace + workspace_to_user on signup
+			// app pulls them via Sync, nothing to enqueue
+			return nil
+		}
+		return fmt.Errorf("failed to get current workspace-to-user: %w", err)
 	}
 
 	// Look for existing queued mutation

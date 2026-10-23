@@ -168,12 +168,8 @@ func fetchServerVersion() (versionResponse, error) {
 	if domain == "" {
 		return versionResponse{}, errors.New("no current server")
 	}
-	apiURL := server.DomainToBaseURL(domain)
-	if err := requireHTTPS(apiURL); err != nil {
-		return versionResponse{}, err
-	}
 	var ver versionResponse
-	err = getJSON(apiURL+"/version", &ver)
+	err = getJSON(server.DomainToBaseURL(domain)+"/version", &ver)
 	return ver, err
 }
 
@@ -197,17 +193,12 @@ func fetchLatestRelease() (versionResponse, error) {
 	return versionResponse{LatestAppVersion: strings.TrimPrefix(release.TagName, "v")}, nil
 }
 
-func getJSON(url string, out any) error {
-	resp, err := checkClient.Get(url) // #nosec G704 -- the configured backend, HTTPS enforced by requireHTTPS, or the fixed GitHub release URL
+func getJSON(rawURL string, out any) error {
+	body, err := fetchAll(rawURL)
 	if err != nil {
 		return err
 	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("HTTP %d from %s", resp.StatusCode, url)
-	}
-	return json.NewDecoder(resp.Body).Decode(out)
+	return json.Unmarshal(body, out)
 }
 
 // Apply downloads, verifies, installs, and relaunches the latest version.

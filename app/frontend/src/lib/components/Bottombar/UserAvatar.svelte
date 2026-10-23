@@ -18,25 +18,22 @@
 		}
 	};
 
+	const logout: ContextMenuOption[] = [
+		{
+			label: '',
+			divider: true
+		},
+		{
+			label: 'Log out',
+			action: async (onclose) => {
+				await Logout();
+				onclose();
+			}
+		}
+	];
+
 	// The local edition has no session to end.
-	const options = $derived<ContextMenuOption[]>(
-		$localEditionStore
-			? [settings]
-			: [
-					settings,
-					{
-						label: '',
-						divider: true
-					},
-					{
-						label: 'Log out',
-						action: async (onclose) => {
-							await Logout();
-							onclose();
-						}
-					}
-				]
-	);
+	const options = $derived([settings, ...($localEditionStore ? [] : logout)]);
 </script>
 
 {#if user}

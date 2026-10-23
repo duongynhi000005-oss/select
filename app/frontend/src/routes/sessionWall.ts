@@ -77,7 +77,7 @@ const onLogin = async () => {
 	await reopenLastFolder();
 
 	modalStore.set(null);
-	if (!get(localEditionStore)) logoutPollInterval = setInterval(() => CheckForLogout(), 500);
+	logoutPollInterval = setInterval(() => CheckForLogout(), 500);
 	await Promise.all([permissions, user]);
 };
 

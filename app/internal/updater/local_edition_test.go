@@ -10,13 +10,13 @@ import (
 // The local edition asks GitHub, whose tag carries the "v" the download URL and
 // the signature check add back themselves.
 func TestLatestReleaseFromGitHub(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+	srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_, _ = w.Write([]byte(`{"tag_name":"v1.4.2","draft":false,"prerelease":false}`))
 	}))
 	t.Cleanup(srv.Close)
-	old := latestReleaseURL
-	latestReleaseURL = srv.URL
-	t.Cleanup(func() { latestReleaseURL = old })
+	oldURL, oldClient := latestReleaseURL, checkClient
+	latestReleaseURL, checkClient = srv.URL, srv.Client()
+	t.Cleanup(func() { latestReleaseURL, checkClient = oldURL, oldClient })
 	t.Setenv("APP_ENV", "production")
 
 	ver, err := fetchLatestRelease()
