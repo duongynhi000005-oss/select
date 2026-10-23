@@ -7,6 +7,7 @@ import (
 	"selectDb/internal/api"
 	"selectDb/internal/db/db_types"
 	"selectDb/internal/db/generated"
+	"selectDb/internal/edition"
 )
 
 // A pointer so a response missing the field reads as nil, not as an empty logo.
@@ -16,12 +17,19 @@ type logoResponse struct {
 
 // UpdateLogo uploads a logo, then mirrors what the server stored — the
 // re-encoded image, not the caller's bytes — into the local database. Teammates
-// get it on their next pull, since the endpoint bumps updated_at.
+// get it on their next pull, since the endpoint bumps updated_at. The local
+// edition stores the caller's PNG as given.
 //
 // The local write is untracked (@no-track in the query): the sync path does not
 // carry the logo column, so a tracked one would queue a commit that never applies.
 func (w *Workspace) UpdateLogo(workspaceID, logo string) error {
 	ctx := context.Background()
+
+	// No server to re-encode it. The frontend already draws it into a 128x128
+	// PNG, and the column's CHECK refuses anything that is not one.
+	if edition.Local {
+		return w.storeLogoLocally(ctx, workspaceID, logo)
+	}
 
 	var res logoResponse
 	if err := api.Fetch(ctx, "PUT", "workspaces/"+workspaceID+"/logo",

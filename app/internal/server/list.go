@@ -25,7 +25,8 @@ func ListServerDomains() ([]string, error) {
 			continue
 		}
 		name := e.Name()
-		if name == "" || name[0] == '.' {
+		// The local edition's database is not a server to sign in to.
+		if name == "" || name[0] == '.' || name == LocalDomain {
 			continue
 		}
 		dbPath := filepath.Join(appRoot, name, dbFilename)

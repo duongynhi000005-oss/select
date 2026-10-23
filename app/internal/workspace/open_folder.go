@@ -9,8 +9,10 @@ import (
 
 	"selectDb/internal/db/generated"
 	"selectDb/internal/desktop"
+	"selectDb/internal/edition"
 	"selectDb/internal/graph"
 	"selectDb/internal/server"
+	"selectDb/internal/utils"
 )
 
 // WorkspaceStatus is what opening a folder found, and so which screen the
@@ -82,7 +84,9 @@ func (w *Workspace) OpenFolder(path string) (FolderState, error) {
 	}
 	result.WorkspaceID = cfg.WorkspaceID
 
-	if cfg.Server != currentServer {
+	// The local edition has no server to be wrong about, so it opens a folder
+	// made against any of them.
+	if cfg.Server != currentServer && !edition.Local {
 		result.Status = WrongServer
 		result.FolderServer = cfg.Server
 		return result, nil
@@ -93,7 +97,7 @@ func (w *Workspace) OpenFolder(path string) (FolderState, error) {
 		return FolderState{}, err
 	}
 
-	member, err := w.isMember(userID, cfg.WorkspaceID)
+	member, err := w.isMember(userID, cfg.WorkspaceID, result.SuggestedName)
 	if err != nil {
 		return FolderState{}, err
 	}
@@ -111,15 +115,26 @@ func (w *Workspace) OpenFolder(path string) (FolderState, error) {
 }
 
 // isMember reads the membership row, not the workspace row: revoking access
-// deletes the first and leaves the second. A miss pulls first, because a
-// teammate who just cloned has the folder before the local database has the
-// workspace.
-func (w *Workspace) isMember(userID, workspaceID string) (bool, error) {
+// deletes the first and leaves the second. A miss pulls, or adopts in the local
+// edition, because a clone has the folder before the database has the workspace.
+func (w *Workspace) isMember(userID, workspaceID, folderName string) (bool, error) {
 	ctx := context.Background()
 
 	member, err := w.hasMemberRow(ctx, userID, workspaceID)
 	if err != nil || member {
 		return member, err
+	}
+
+	if edition.Local {
+		if _, err := w.insertWorkspace(newWorkspaceParams{
+			ID:                workspaceID,
+			WorkspaceToUserID: utils.GenerateUUID(),
+			UserID:            userID,
+			Name:              folderName,
+		}); err != nil {
+			return false, fmt.Errorf("adopt workspace: %w", err)
+		}
+		return true, nil
 	}
 
 	if w.PullFunc == nil {

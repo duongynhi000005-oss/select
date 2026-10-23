@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"selectDb/internal/edition"
 	"selectDb/internal/server"
 
 	"github.com/klauspost/compress/zstd"
@@ -201,6 +202,9 @@ func FetchStream(
 }
 
 func GetBaseURL() (string, error) {
+	if edition.Local {
+		return "", errors.New("this edition of Select runs without a server")
+	}
 	domain, err := server.ReadCurrentDomain()
 	if err != nil {
 		return "", err

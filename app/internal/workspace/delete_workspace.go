@@ -5,11 +5,13 @@ import (
 	"fmt"
 
 	"selectDb/internal/api"
+	"selectDb/internal/edition"
 	"selectDb/internal/graph"
 )
 
 // DeleteWorkspace removes the workspace on the server, its local rows, and the
-// select.config.json that named it. The folder is left as it was.
+// select.config.json that named it. The folder is left as it was. The local
+// edition has no server copy to remove.
 //
 // A config can outlive its workspace when the delete happened on another
 // machine. Opening that folder reports no access and leaves the config alone.
@@ -23,8 +25,10 @@ func (w *Workspace) DeleteWorkspace(workspaceID string) error {
 		folder = root
 	}
 
-	if err := api.Fetch(ctx, "DELETE", "workspaces/"+workspaceID, nil, api.WorkspaceHeader(workspaceID), nil); err != nil {
-		return fmt.Errorf("delete workspace on server: %w", err)
+	if !edition.Local {
+		if err := api.Fetch(ctx, "DELETE", "workspaces/"+workspaceID, nil, api.WorkspaceHeader(workspaceID), nil); err != nil {
+			return fmt.Errorf("delete workspace on server: %w", err)
+		}
 	}
 
 	if err := w.Queries.DeleteWorkspaceToUserByWorkspaceID(ctx, workspaceID); err != nil {

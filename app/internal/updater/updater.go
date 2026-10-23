@@ -1,7 +1,8 @@
 // Package updater checks for new versions and applies updates on user request.
 //
-// On startup, CheckVersion silently queries the remote /version endpoint and
-// emits an "update" event with status "available" if a newer version exists.
+// On startup, CheckVersion silently queries the server's /version endpoint, or
+// GitHub's latest release in the local edition, and emits an "update" event with
+// status "available" if a newer version exists.
 // The user can then trigger Apply via the frontend to download, verify, install,
 // and relaunch.
 //
@@ -26,6 +27,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -41,6 +43,7 @@ import (
 
 	"github.com/jedisct1/go-minisign"
 	"selectDb/internal/desktop"
+	"selectDb/internal/edition"
 
 	"selectDb/internal/server"
 )
@@ -102,9 +105,8 @@ func requireHTTPS(raw string) error {
 	return nil
 }
 
-// fallbackReleaseBase is the built-in release location, used only when the
-// backend does not supply release_base_url (e.g. a client talking to an older
-// backend during rollout). Drop once every backend reports the field.
+// fallbackReleaseBase is the built-in release location, used when no backend
+// supplies release_base_url: the local edition, or an older backend.
 func fallbackReleaseBase(version string) string {
 	return fmt.Sprintf("https://github.com/select-db/select/releases/download/v%s", version)
 }
@@ -127,8 +129,8 @@ func checksumsURL(version, base string) string {
 	return checksumBaseURL(version, base) + "/checksums.sha256"
 }
 
-// CheckVersion fetches /version and emits an "available" event if a newer
-// version exists. Does not download or install anything.
+// CheckVersion fetches the latest version and emits an "available" event if it
+// is newer. Does not download or install anything.
 func (u *Updater) CheckVersion() {
 	current := os.Getenv("APP_VERSION")
 	if current == "" || current == "dev" {
@@ -141,30 +143,12 @@ func (u *Updater) CheckVersion() {
 
 	cleanupBak()
 
-	domain, err := server.ReadCurrentDomain()
-	if err != nil || domain == "" {
-		return
+	fetch := fetchServerVersion
+	if edition.Local {
+		fetch = fetchLatestRelease
 	}
-	apiURL := server.DomainToBaseURL(domain)
-	if err := requireHTTPS(apiURL); err != nil {
-		return
-	}
-
-	resp, err := checkClient.Get(apiURL + "/version") // #nosec G704 -- apiURL is the app's configured backend; HTTPS enforced by requireHTTPS
-	if err != nil {
-		return
-	}
-	defer func() { _ = resp.Body.Close() }()
-
-	if resp.StatusCode != http.StatusOK {
-		return
-	}
-
-	var ver versionResponse
-	if err := json.NewDecoder(resp.Body).Decode(&ver); err != nil {
-		return
-	}
-	if !semverLess(current, ver.LatestAppVersion) {
+	ver, err := fetch()
+	if err != nil || !semverLess(current, ver.LatestAppVersion) {
 		return
 	}
 
@@ -174,6 +158,47 @@ func (u *Updater) CheckVersion() {
 	u.mu.Unlock()
 
 	emit(u.ctx, UpdateEvent{Status: "available", Version: ver.LatestAppVersion})
+}
+
+func fetchServerVersion() (versionResponse, error) {
+	domain, err := server.ReadCurrentDomain()
+	if err != nil {
+		return versionResponse{}, err
+	}
+	if domain == "" {
+		return versionResponse{}, errors.New("no current server")
+	}
+	var ver versionResponse
+	err = getJSON(server.DomainToBaseURL(domain)+"/version", &ver)
+	return ver, err
+}
+
+// latestReleaseURL leaves out drafts and pre-releases, so a release is offered
+// once it is signed and published, and never staging-latest. A var for tests.
+var latestReleaseURL = "https://api.github.com/repos/select-db/select/releases/latest"
+
+// fetchLatestRelease leaves the release base empty, so the download takes
+// fallbackReleaseBase.
+func fetchLatestRelease() (versionResponse, error) {
+	// staging-latest is one moving tag that carries no version to compare.
+	if os.Getenv("APP_ENV") == "staging" {
+		return versionResponse{}, errors.New("no staging channel without a server")
+	}
+	var release struct {
+		TagName string `json:"tag_name"`
+	}
+	if err := getJSON(latestReleaseURL, &release); err != nil {
+		return versionResponse{}, err
+	}
+	return versionResponse{LatestAppVersion: strings.TrimPrefix(release.TagName, "v")}, nil
+}
+
+func getJSON(rawURL string, out any) error {
+	body, err := fetchAll(rawURL)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(body, out)
 }
 
 // Apply downloads, verifies, installs, and relaunches the latest version.

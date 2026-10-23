@@ -4,6 +4,7 @@
 	import { Logout } from '$lib/bindings/selectDb/internal/system/system';
 	import { currentUserStore } from '$lib/stores/currentUserStore';
 	import { openSettingsSection } from '$lib/components/Layout/layoutStore';
+	import { isLocalEdition } from '$lib/stores/envStore';
 
 	// The signed-in user rather than a workspace member, since this renders with
 	// no folder open.
@@ -17,17 +18,22 @@
 				onclose();
 			}
 		},
-		{
-			label: '',
-			divider: true
-		},
-		{
-			label: 'Log out',
-			action: async (onclose) => {
-				await Logout();
-				onclose();
-			}
-		}
+		// The local edition has no session to end.
+		...(isLocalEdition
+			? []
+			: [
+					{
+						label: '',
+						divider: true
+					},
+					{
+						label: 'Log out',
+						action: async (onclose: () => void) => {
+							await Logout();
+							onclose();
+						}
+					}
+				])
 	];
 </script>
 

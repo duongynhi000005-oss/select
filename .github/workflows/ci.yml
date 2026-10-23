@@ -42,6 +42,9 @@ env:
   WAILS_VERSION: v3.0.0-beta.28
   # Minimum app version, bump when a release contains a breaking change.
   MIN_APP_VERSION: 0.0.0
+  # `local` builds and releases the app that runs without a Select server;
+  # unset, the one that signs in.
+  APP_EDITION: ${{ vars.APP_EDITION }}
 
 jobs:
   plan:
@@ -424,6 +427,7 @@ jobs:
           wails3 task package \
             APP_VERSION="${V}" \
             APP_ENV="${APP_ENV}" \
+            APP_EDITION="${APP_EDITION}" \
             MINISIGN_PUBLIC_KEY="${PUBKEY}"
           cp ../dialect/core/tokenanalyzer/python/dist/analyzer build/bin/select.app/Contents/MacOS/analyzer
           cd build/bin
@@ -495,6 +499,7 @@ jobs:
           wails3 task package \
             APP_VERSION="${V}" \
             APP_ENV="${APP_ENV}" \
+            APP_EDITION="${APP_EDITION}" \
             MINISIGN_PUBLIC_KEY="${PUBKEY}"
           cp ../dialect/core/tokenanalyzer/python/dist/analyzer build/bin/select.app/Contents/MacOS/analyzer
           cd build/bin
@@ -567,6 +572,7 @@ jobs:
           wails3 task package \
             APP_VERSION="${V}" \
             APP_ENV="${APP_ENV}" \
+            APP_EDITION="${APP_EDITION}" \
             MINISIGN_PUBLIC_KEY="${PUBKEY}"
           cp ../dialect/core/tokenanalyzer/python/dist/analyzer.exe build/bin/analyzer.exe
 
@@ -643,6 +649,7 @@ jobs:
           wails3 task package \
             APP_VERSION="${V}" \
             APP_ENV="${APP_ENV}" \
+            APP_EDITION="${APP_EDITION}" \
             MINISIGN_PUBLIC_KEY="${PUBKEY}"
           cp ../dialect/core/tokenanalyzer/python/dist/analyzer build/bin/analyzer
           cd build/bin
@@ -686,7 +693,7 @@ jobs:
           name: "Staging (latest)"
           prerelease: true
           files: dist/*
-          body: "Latest build from the dev branch. Connects to staging API. Devtools enabled."
+          body: "Latest build from the dev branch. ${{ env.APP_EDITION == 'local' && 'Local edition.' || 'Connects to staging API.' }} Devtools enabled."
 
   draft-release:
     name: Create prod release

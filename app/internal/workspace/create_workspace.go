@@ -15,7 +15,7 @@ type newWorkspaceParams struct {
 	Name              string
 }
 
-// insertWorkspace records a server-created workspace and this user's membership.
+// insertWorkspace records a workspace and this user's membership.
 // It does not make it current: setCurrentWorkspace owns that.
 func (w *Workspace) insertWorkspace(params newWorkspaceParams) (generated.Workspace, error) {
 	if params.ID == "" || params.WorkspaceToUserID == "" || params.UserID == "" {

@@ -5,10 +5,15 @@ import (
 	"path/filepath"
 	"strings"
 
+	"selectDb/internal/edition"
 	"selectDb/internal/utils"
 )
 
 const currentServerFileName = ".current_server"
+
+// LocalDomain names the local edition's one server. Nothing listens there: it
+// keys the local database and the workspace configs, and nothing else.
+const LocalDomain = "local"
 
 // currentServerFilePath returns the path to the file that stores the current server domain.
 func currentServerFilePath() (string, error) {
@@ -20,7 +25,12 @@ func currentServerFilePath() (string, error) {
 }
 
 // ReadCurrentDomain returns the current server domain from the file, or empty if unset.
+// The local edition ignores the file, which a signed-in install on the same
+// machine shares.
 func ReadCurrentDomain() (string, error) {
+	if edition.Local {
+		return LocalDomain, nil
+	}
 	path, err := currentServerFilePath()
 	if err != nil {
 		return "", err

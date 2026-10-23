@@ -24,6 +24,7 @@
 	import { revokeConnections } from '$lib/components/views/shared/revokeConnections';
 	import { modalStore } from '$lib/system/Modal/ModalStore';
 	import { myPermissions } from '$lib/stores/myPermissionsStore';
+	import { isLocalEdition } from '$lib/stores/envStore';
 
 	import VariablePicker from '$lib/components/views/File/Header/VariablePicker.svelte';
 	import DatasourceFieldHelpModal from './help/DatasourceFieldHelpModal.svelte';
@@ -484,50 +485,53 @@
 
 	<div class="group">
 		{#if isNetworked}
-			<div class="standalone-input">
-				<p class="label with-help">
-					<span>Proxy connection</span>
-					<button type="button" class="help" onclick={() => openFieldHelp('proxy_connection')}>
-						<Icon icon="info" size={12} />
-					</button>
-				</p>
-				<Checkbox
-					bind:checked={proxified}
-					onchange={async (checked) => {
-						if (checked) {
-							// local -> proxified: dsnLocal holds the real plaintext DSN from the
-							// local config, so it's safe to push to the backend as-is.
-							//
-							// Through save(), not a bare writeConfigFile: the credential has to
-							// reach the server before the local config says it lives there. Writing
-							// the config first left a window, until the debounced save ran, 600ms
-							// later, where the only copy of the DSN was this form's memory, and
-							// where anything reloading the form read `proxified: true` and asked
-							// the server for a datasource it had not been given yet (404).
-							await save();
-						} else {
-							// proxified -> local: this drops the credential for everyone, so it asks
-							// first and puts the checkbox back if the answer is no.
-							if (!(await revokeConnections([{ id, name }]))) {
-								proxified = true;
-								return;
+			<!-- The local edition offers no proxy, but still lets one made elsewhere be turned off. -->
+			{#if !isLocalEdition || proxified}
+				<div class="standalone-input">
+					<p class="label with-help">
+						<span>Proxy connection</span>
+						<button type="button" class="help" onclick={() => openFieldHelp('proxy_connection')}>
+							<Icon icon="info" size={12} />
+						</button>
+					</p>
+					<Checkbox
+						bind:checked={proxified}
+						onchange={async (checked) => {
+							if (checked) {
+								// local -> proxified: dsnLocal holds the real plaintext DSN from the
+								// local config, so it's safe to push to the backend as-is.
+								//
+								// Through save(), not a bare writeConfigFile: the credential has to
+								// reach the server before the local config says it lives there. Writing
+								// the config first left a window, until the debounced save ran, 600ms
+								// later, where the only copy of the DSN was this form's memory, and
+								// where anything reloading the form read `proxified: true` and asked
+								// the server for a datasource it had not been given yet (404).
+								await save();
+							} else {
+								// proxified -> local: this drops the credential for everyone, so it asks
+								// first and puts the checkbox back if the answer is no.
+								if (!(await revokeConnections([{ id, name }]))) {
+									proxified = true;
+									return;
+								}
+								// The real secret lived only on the backend and is now gone; the form
+								// holds a masked copy (bullets). Clear the credential fields so the mask
+								// can't be persisted to the local config and the user knowingly
+								// re-enters them.
+								dsnLocal = '';
+								sshPassword = '';
+								sshPrivateKey = '';
 							}
-							// The real secret lived only on the backend and is now gone; the form
-							// holds a masked copy (bullets). Clear the credential fields so the mask
-							// can't be persisted to the local config and the user knowingly
-							// re-enters them.
-							dsnLocal = '';
-							sshPassword = '';
-							sshPrivateKey = '';
-						}
-					}}
-					label={mayProxify
-						? 'Proxified'
-						: 'Proxified (needs the Workspace connections permission)'}
-					disabled={!mayProxify}
-					size="sm"
-				/>
-			</div>
+						}}
+						label={mayProxify
+							? 'Proxified'
+							: 'Proxified (needs the Workspace connections permission)'}
+						disabled={!mayProxify}
+						size="sm"
+					/>
+				</div>
+			{/if}
 
 			<div class="standalone-input">
 				<p class="label with-help">

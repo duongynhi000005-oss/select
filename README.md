@@ -34,3 +34,8 @@ proxified connections to PostgreSQL, MySQL, and SQLite.
 ```
 
 `./dev.sh` on its own lists the rest.
+
+Prefix `app start`, `app build` or `app package` with `APP_EDITION=local` for
+the local edition: the same app without a Select server, so no sign-in, sync,
+proxified connections, users or API keys. CI builds and releases it when the
+repository variable `APP_EDITION` is `local`.

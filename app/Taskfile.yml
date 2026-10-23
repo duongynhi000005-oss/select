@@ -5,6 +5,9 @@ version: '3'
 #
 # Build metadata is injected through vars, e.g.
 #   wails3 task build APP_VERSION=1.2.3 APP_ENV=production MINISIGN_PUBLIC_KEY=...
+#
+# APP_EDITION=local builds the app that runs without a Select server. Any other
+# value, or none, builds the edition that signs in to one.
 
 vars:
   APP_NAME: 'select'
@@ -15,9 +18,10 @@ vars:
 
   APP_VERSION: '{{.APP_VERSION | default "dev"}}'
   APP_ENV: '{{.APP_ENV | default "dev"}}'
+  APP_EDITION: '{{.APP_EDITION | default ""}}'
   MINISIGN_PUBLIC_KEY: '{{.MINISIGN_PUBLIC_KEY | default ""}}'
 
-  META_LDFLAGS: '-X main.appVersion={{.APP_VERSION}} -X main.appEnv={{.APP_ENV}} -X selectDb/internal/updater.minisignPublicKey={{.MINISIGN_PUBLIC_KEY}}'
+  META_LDFLAGS: '-X main.appVersion={{.APP_VERSION}} -X main.appEnv={{.APP_ENV}} -X selectDb/internal/edition.name={{.APP_EDITION}} -X selectDb/internal/updater.minisignPublicKey={{.MINISIGN_PUBLIC_KEY}}'
 
 tasks:
   generate:bindings:
@@ -80,6 +84,7 @@ tasks:
       - npm run build
     env:
       PUBLIC_APP_ENV: '{{.APP_ENV}}'
+      VITE_APP_EDITION: '{{.APP_EDITION}}'
 
   build:
     summary: Builds the desktop application into build/bin
@@ -202,6 +207,10 @@ tasks:
     summary: Runs the application in development mode
     cmds:
       - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
+    # `wails3 dev` builds and serves through child processes, which see the
+    # environment rather than this task's vars.
+    env:
+      APP_EDITION: '{{.APP_EDITION}}'
 
   dev:frontend:
     summary: Runs the frontend dev server (used by `wails3 dev`)
@@ -214,6 +223,8 @@ tasks:
       # Vite's default `localhost` binding resolves to ::1 on macOS. Without this
       # the app only gets "connection refused" from the dev server.
       - npm run dev -- --host 127.0.0.1 --port {{.VITE_PORT}} --strictPort
+    env:
+      VITE_APP_EDITION: '{{.APP_EDITION}}'
 
   build:server:
     summary: Builds the app in headless server mode, for the e2e suite

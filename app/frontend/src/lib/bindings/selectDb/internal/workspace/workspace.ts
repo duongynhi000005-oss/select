@@ -22,8 +22,9 @@ export function CloseFolder(): $CancellablePromise<void> {
 }
 
 /**
- * CreateWorkspaceInFolder creates the workspace on the server, writes the config
- * that names it, and opens it. An empty name defaults to the folder's.
+ * CreateWorkspaceInFolder creates the workspace on the server, or locally in the
+ * local edition, writes the config that names it, and opens it. An empty name
+ * defaults to the folder's.
  */
 export function CreateWorkspaceInFolder(path: string, name: string): $CancellablePromise<$models.FolderState> {
     return $Call.ByID(1466431544, path, name).then(($result: any) => {
@@ -33,7 +34,8 @@ export function CreateWorkspaceInFolder(path: string, name: string): $Cancellabl
 
 /**
  * DeleteWorkspace removes the workspace on the server, its local rows, and the
- * select.config.json that named it. The folder is left as it was.
+ * select.config.json that named it. The folder is left as it was. The local
+ * edition has no server copy to remove.
  * 
  * A config can outlive its workspace when the delete happened on another
  * machine. Opening that folder reports no access and leaves the config alone.
@@ -97,7 +99,8 @@ export function SearchUser(email: string): $CancellablePromise<$models.SearchUse
 /**
  * UpdateLogo uploads a logo, then mirrors what the server stored — the
  * re-encoded image, not the caller's bytes — into the local database. Teammates
- * get it on their next pull, since the endpoint bumps updated_at.
+ * get it on their next pull, since the endpoint bumps updated_at. The local
+ * edition stores the caller's PNG as given.
  * 
  * The local write is untracked (@no-track in the query): the sync path does not
  * carry the logo column, so a tracked one would queue a commit that never applies.

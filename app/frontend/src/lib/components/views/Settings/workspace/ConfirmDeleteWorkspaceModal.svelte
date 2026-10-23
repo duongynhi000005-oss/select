@@ -4,6 +4,7 @@
 	import ModalFooter from '$lib/system/Modal/ModalFooter.svelte';
 	import { folderStore } from '$lib/components/PageFolder/folderStore';
 	import { must, tryCatch } from '$lib/utils/tryCatch';
+	import { isLocalEdition } from '$lib/stores/envStore';
 
 	type Props = {
 		onClose: () => void;
@@ -14,7 +15,8 @@
 	let { onClose, onConfirm, workspaceName }: Props = $props();
 	let deleting = $state(false);
 
-	const server = $derived($folderStore?.currentServer ?? '');
+	// The local edition's "server" is a database key, not a place to name.
+	const server = $derived(isLocalEdition ? '' : ($folderStore?.currentServer ?? ''));
 
 	const handleConfirm = async () => {
 		deleting = true;
