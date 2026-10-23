@@ -97,22 +97,9 @@ func (w *Workspace) OpenFolder(path string) (FolderState, error) {
 		return FolderState{}, err
 	}
 
-	member, err := w.isMember(userID, cfg.WorkspaceID)
+	member, err := w.isMember(userID, cfg.WorkspaceID, result.SuggestedName)
 	if err != nil {
 		return FolderState{}, err
-	}
-	// A folder made on a server is not in the local database yet. With no server
-	// to ask, the local user takes it on as its own.
-	if !member && edition.Local {
-		if _, err := w.insertWorkspace(newWorkspaceParams{
-			ID:                cfg.WorkspaceID,
-			WorkspaceToUserID: utils.GenerateUUID(),
-			UserID:            userID,
-			Name:              result.SuggestedName,
-		}); err != nil {
-			return FolderState{}, fmt.Errorf("adopt workspace: %w", err)
-		}
-		member = true
 	}
 	if !member {
 		result.Status = NoAccess
@@ -130,8 +117,9 @@ func (w *Workspace) OpenFolder(path string) (FolderState, error) {
 // isMember reads the membership row, not the workspace row: revoking access
 // deletes the first and leaves the second. A miss pulls first, because a
 // teammate who just cloned has the folder before the local database has the
-// workspace. The local edition has nowhere to pull from, and adopts instead.
-func (w *Workspace) isMember(userID, workspaceID string) (bool, error) {
+// workspace. The local edition has nowhere to pull from: the local user takes
+// the workspace on as its own, named after the folder.
+func (w *Workspace) isMember(userID, workspaceID, folderName string) (bool, error) {
 	ctx := context.Background()
 
 	member, err := w.hasMemberRow(ctx, userID, workspaceID)
@@ -139,7 +127,19 @@ func (w *Workspace) isMember(userID, workspaceID string) (bool, error) {
 		return member, err
 	}
 
-	if w.PullFunc == nil || edition.Local {
+	if edition.Local {
+		if _, err := w.insertWorkspace(newWorkspaceParams{
+			ID:                workspaceID,
+			WorkspaceToUserID: utils.GenerateUUID(),
+			UserID:            userID,
+			Name:              folderName,
+		}); err != nil {
+			return false, fmt.Errorf("adopt workspace: %w", err)
+		}
+		return true, nil
+	}
+
+	if w.PullFunc == nil {
 		return false, nil
 	}
 	if err := w.PullFunc(ctx, userID); err != nil {

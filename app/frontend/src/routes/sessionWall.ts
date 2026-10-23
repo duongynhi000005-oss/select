@@ -73,7 +73,7 @@ const onLogin = async () => {
 	await reopenLastFolder();
 
 	modalStore.set(null);
-	// The local edition has no session to end.
+	// CheckForLogout never ends a local session, so there is nothing to poll for.
 	if (!isLocalEdition) logoutPollInterval = setInterval(() => CheckForLogout(), 500);
 	await Promise.all([permissions, user]);
 };
