@@ -7,7 +7,7 @@ import RevokeConnectionModal from '$lib/components/views/Datasource/RevokeConnec
 import { modalStore } from '$lib/system/Modal/ModalStore';
 import { notifyError } from '$lib/system/Notifications/notificationsStore';
 import { myPermissions } from '$lib/stores/myPermissionsStore';
-import { localEditionStore } from '$lib/stores/editionStore';
+import { isLocalEdition } from '$lib/stores/envStore';
 import { tryCatch } from '$lib/utils/tryCatch';
 
 /**
@@ -35,7 +35,7 @@ export const revokeConnections = async (
 
 	// The credentials sit on a server the local edition cannot reach, so there is
 	// nothing here to revoke, and refusing would leave the folder undeletable.
-	if (get(localEditionStore)) return true;
+	if (isLocalEdition) return true;
 
 	// Credentials are administrated, not owned by whoever has the workspace
 	// open. The server refuses this too; refusing here is so the answer arrives

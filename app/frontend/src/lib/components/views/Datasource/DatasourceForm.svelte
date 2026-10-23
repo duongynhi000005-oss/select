@@ -24,7 +24,7 @@
 	import { revokeConnections } from '$lib/components/views/shared/revokeConnections';
 	import { modalStore } from '$lib/system/Modal/ModalStore';
 	import { myPermissions } from '$lib/stores/myPermissionsStore';
-	import { localEditionStore } from '$lib/stores/editionStore';
+	import { isLocalEdition } from '$lib/stores/envStore';
 
 	import VariablePicker from '$lib/components/views/File/Header/VariablePicker.svelte';
 	import DatasourceFieldHelpModal from './help/DatasourceFieldHelpModal.svelte';
@@ -486,7 +486,7 @@
 	<div class="group">
 		{#if isNetworked}
 			<!-- The local edition offers no proxy, but still lets one made elsewhere be turned off. -->
-			{#if !$localEditionStore || proxified}
+			{#if !isLocalEdition || proxified}
 				<div class="standalone-input">
 					<p class="label with-help">
 						<span>Proxy connection</span>

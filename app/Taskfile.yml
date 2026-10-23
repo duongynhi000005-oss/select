@@ -18,10 +18,10 @@ vars:
 
   APP_VERSION: '{{.APP_VERSION | default "dev"}}'
   APP_ENV: '{{.APP_ENV | default "dev"}}'
-  APP_EDITION: '{{.APP_EDITION | default "pro"}}'
+  APP_EDITION: '{{.APP_EDITION | default ""}}'
   MINISIGN_PUBLIC_KEY: '{{.MINISIGN_PUBLIC_KEY | default ""}}'
 
-  META_LDFLAGS: '-X main.appVersion={{.APP_VERSION}} -X main.appEnv={{.APP_ENV}} -X main.appEdition={{.APP_EDITION}} -X selectDb/internal/updater.minisignPublicKey={{.MINISIGN_PUBLIC_KEY}}'
+  META_LDFLAGS: '-X main.appVersion={{.APP_VERSION}} -X main.appEnv={{.APP_ENV}} -X selectDb/internal/edition.name={{.APP_EDITION}} -X selectDb/internal/updater.minisignPublicKey={{.MINISIGN_PUBLIC_KEY}}'
 
 tasks:
   generate:bindings:
@@ -84,6 +84,7 @@ tasks:
       - npm run build
     env:
       PUBLIC_APP_ENV: '{{.APP_ENV}}'
+      VITE_APP_EDITION: '{{.APP_EDITION}}'
 
   build:
     summary: Builds the desktop application into build/bin
@@ -218,6 +219,8 @@ tasks:
       # Vite's default `localhost` binding resolves to ::1 on macOS. Without this
       # the app only gets "connection refused" from the dev server.
       - npm run dev -- --host 127.0.0.1 --port {{.VITE_PORT}} --strictPort
+    env:
+      VITE_APP_EDITION: '{{.APP_EDITION}}'
 
   build:server:
     summary: Builds the app in headless server mode, for the e2e suite

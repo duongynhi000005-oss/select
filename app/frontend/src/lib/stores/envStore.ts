@@ -4,3 +4,6 @@ export const appEnv = (import.meta.env.PUBLIC_APP_ENV as AppEnv | undefined) ?? 
 
 export const isStaging = appEnv === 'staging';
 export const isProduction = appEnv === 'production';
+
+/** A build without a Select server, which offers nothing that needs one. */
+export const isLocalEdition = import.meta.env.VITE_APP_EDITION === 'local';

@@ -13,12 +13,8 @@ import { loadMyPermissions, clearMyPermissions } from '$lib/stores/myPermissions
 import { loadCurrentUser, clearCurrentUser } from '$lib/stores/currentUserStore';
 import { modalStore } from '$lib/system/Modal/ModalStore';
 import { tryCatch } from '$lib/utils/tryCatch';
-import {
-	CheckForLogin,
-	CheckForLogout,
-	IsLocalEdition
-} from '$lib/bindings/selectDb/internal/system/system';
-import { localEditionStore } from '$lib/stores/editionStore';
+import { CheckForLogin, CheckForLogout } from '$lib/bindings/selectDb/internal/system/system';
+import { isLocalEdition } from '$lib/stores/envStore';
 import { EventsOn } from '$lib/wails/events';
 import { stripNullItems, type WorkspaceNode } from '$lib/wails/graph';
 import { get, writable } from 'svelte/store';
@@ -84,13 +80,14 @@ const onLogin = async () => {
 EventsOn('login', onLogin);
 
 export const setupSessionWall = async () => {
-	const [local] = await tryCatch(IsLocalEdition);
-	localEditionStore.set(local === true);
 	await tryCatch(CheckForLogin);
-	// Signed in here rather than on an event, so the loader holds until the
-	// folder is back instead of showing the login page in between.
-	if (local) await onLogin();
-	sessionCheckingStore.set(false);
+	try {
+		// Signed in here rather than on an event, so the loader holds until the
+		// folder is back instead of showing the login page in between.
+		if (isLocalEdition) await onLogin();
+	} finally {
+		sessionCheckingStore.set(false);
+	}
 };
 
 export const teardownSessionWall = () => {

@@ -4,7 +4,7 @@
 	import { Logout } from '$lib/bindings/selectDb/internal/system/system';
 	import { currentUserStore } from '$lib/stores/currentUserStore';
 	import { openSettingsSection } from '$lib/components/Layout/layoutStore';
-	import { localEditionStore } from '$lib/stores/editionStore';
+	import { isLocalEdition } from '$lib/stores/envStore';
 
 	// The signed-in user rather than a workspace member, since this renders with
 	// no folder open.
@@ -33,7 +33,7 @@
 	];
 
 	// The local edition has no session to end.
-	const options = $derived([settings, ...($localEditionStore ? [] : logout)]);
+	const options = [settings, ...(isLocalEdition ? [] : logout)];
 </script>
 
 {#if user}

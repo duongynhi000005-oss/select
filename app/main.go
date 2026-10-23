@@ -10,7 +10,6 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 
 	appcore "selectDb/internal/app"
-	"selectDb/internal/edition"
 
 	"github.com/selectDb/toolkit"
 )
@@ -20,11 +19,10 @@ var assets embed.FS
 
 // Build-time vars, overridden via:
 //
-//	wails3 build -ldflags "-X main.appVersion=1.2.3 -X main.appEnv=production -X main.appEdition=local"
+//	wails3 build -ldflags "-X main.appVersion=1.2.3 -X main.appEnv=production"
 var (
 	appVersion = "dev"
 	appEnv     = "dev"
-	appEdition = "pro"
 )
 
 func main() {
@@ -32,7 +30,6 @@ func main() {
 	// In a packaged desktop app there is no shell environment.
 	_ = os.Setenv("APP_VERSION", appVersion)
 	_ = os.Setenv("APP_ENV", appEnv)
-	edition.Local = appEdition == "local"
 
 	toolkit.StartPprofServer()
 

@@ -42,8 +42,8 @@ env:
   WAILS_VERSION: v3.0.0-beta.28
   # Minimum app version, bump when a release contains a breaking change.
   MIN_APP_VERSION: 0.0.0
-  # The repository variable APP_EDITION. `local` builds and releases the app
-  # that runs without a Select server; unset, it builds the one that signs in.
+  # `local` builds and releases the app that runs without a Select server;
+  # unset, the one that signs in.
   APP_EDITION: ${{ vars.APP_EDITION }}
 
 jobs:
