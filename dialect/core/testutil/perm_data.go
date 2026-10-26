@@ -4329,5 +4329,58 @@ func permCases() []PermCase {
 			Needs: []Right{Manage, mainT1(core.ActionDelete)},
 			Why:   "inside a body a bare name may be a variable the body declared, and the body already takes manage",
 		},
+		{
+			Name: "a CTE read in a later branch of a UNION",
+			SQL:  "WITH m AS (SELECT c1 FROM t2) SELECT c1 FROM t1 UNION SELECT c1 FROM m",
+			Needs: []Right{
+				mainT1(core.ActionSelect).Only("c1"),
+				mainT2(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "the WITH clause is in scope across every branch of the compound query, so m resolves to t2",
+		},
+		{
+			On:   []string{"postgresql", "sqlite"},
+			Name: "a CTE read in a later branch of an INTERSECT",
+			SQL:  "WITH m AS (SELECT c1 FROM t2) SELECT c1 FROM t1 INTERSECT SELECT c1 FROM m",
+			Needs: []Right{
+				mainT1(core.ActionSelect).Only("c1"),
+				mainT2(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "INTERSECT shares the statement's CTE scope across all branches",
+		},
+		{
+			On:   []string{"postgresql", "sqlite"},
+			Name: "a materialized CTE in another case read in a later branch of an EXCEPT",
+			SQL:  "WITH M AS MATERIALIZED (SELECT C1 FROM OTHER.T3) SELECT C1 FROM T1 EXCEPT SELECT C1 FROM M",
+			Needs: []Right{
+				mainT1(core.ActionSelect).Only("c1"),
+				otherT3(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "the second branch resolves M to other.t3 rather than a catalog table named m",
+		},
+		{
+			Name: "a CTE joined in a later branch of a UNION",
+			SQL:  "WITH m AS (SELECT c1 FROM t2) SELECT c1 FROM t1 UNION SELECT m.c1 FROM m JOIN t2 ON t2.c1 = m.c1",
+			Needs: []Right{
+				mainT1(core.ActionSelect).Only("c1"),
+				mainT2(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "joining the CTE in a later branch resolves both the selected column and the join predicate through m",
+		},
+		{
+			Name: "a view whose compound query reads a CTE in a later branch",
+			SQL:  "CREATE VIEW vv AS WITH m AS (SELECT c1 FROM t2) SELECT c1 FROM t1 UNION SELECT c1 FROM m",
+			Needs: []Right{
+				Manage,
+				mainT1(core.ActionSelect).Only("c1"),
+				mainT2(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpCreate,
+			Why: "the view body's WITH clause remains in scope for every branch of its compound query",
+		},
 	}
 }

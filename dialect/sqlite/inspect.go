@@ -235,17 +235,21 @@ func (i *Inspector) takeCompoundBranches(selectStmt sqlite.ISelect_stmtContext) 
 	return group
 }
 
-// mergeCompoundBranches reads each branch and merges what it names into result.
-// It returns the last branch that read anything, which is where the tail
-// clauses of the whole compound parse: ORDER BY and LIMIT sit on the final
-// branch and order the rows of every one of them.
+// mergeCompoundBranches reads each branch with the compound query's CTEs in
+// scope and merges what it names into result. It returns the last branch that
+// read anything, which is where the tail clauses of the whole compound parse:
+// ORDER BY and LIMIT sit on the final branch and order the rows of every one of
+// them.
 func (i *Inspector) mergeCompoundBranches(
 	result *core.InspectStatement,
 	branches []sqlite.ISelect_stmtContext,
+	ctes []core.RelationRef,
+	cteSubqueries []core.InspectStatement,
+	cteToSubqueryMap map[string]*core.InspectStatement,
 ) sqlite.ISelect_stmtContext {
 	var last sqlite.ISelect_stmtContext
 	for _, branch := range branches {
-		read := i.inspectSelect(branch)
+		read := i.inspectSelectWithCTEs(branch, ctes, cteSubqueries, cteToSubqueryMap)
 		if read == nil {
 			continue
 		}
@@ -373,6 +377,15 @@ func (l *bodyStatementListener) ExitDelete_stmt(_ *sqlite.Delete_stmtContext) { 
 
 // inspectSelect analyzes a SELECT statement, including UNION/INTERSECT/EXCEPT compounds.
 func (i *Inspector) inspectSelect(selectStmt sqlite.ISelect_stmtContext) *core.InspectStatement {
+	return i.inspectSelectWithCTEs(selectStmt, nil, nil, nil)
+}
+
+func (i *Inspector) inspectSelectWithCTEs(
+	selectStmt sqlite.ISelect_stmtContext,
+	ctes []core.RelationRef,
+	cteSubqueries []core.InspectStatement,
+	cteToSubqueryMap map[string]*core.InspectStatement,
+) *core.InspectStatement {
 	if selectStmt == nil {
 		return nil
 	}
@@ -382,26 +395,25 @@ func (i *Inspector) inspectSelect(selectStmt sqlite.ISelect_stmtContext) *core.I
 		return nil
 	}
 
-	// CTEs are shared across all UNION/INTERSECT/EXCEPT branches.
-	var ctes []core.RelationRef
-	var cteSubqueries []core.InspectStatement
+	result := &core.InspectStatement{
+		Operation: core.InspectOpSelect,
+	}
+
+	// CTEs are shared across all UNION/INTERSECT/EXCEPT branches. A branch split
+	// off by the grammar inherits the head statement's CTEs rather than carrying
+	// a WITH clause of its own.
 	if commonTableStmt := selectStmt.Common_table_stmt(); commonTableStmt != nil {
 		ctes, cteSubqueries = i.extractCTEsWithSubqueries(commonTableStmt)
-	}
-
-	cteToSubqueryMap := make(map[string]*core.InspectStatement)
-	for idx, cte := range ctes {
-		if idx < len(cteSubqueries) {
-			cteToSubqueryMap[i.dialect.NormalizeIdentifier(cte.Table)] = &cteSubqueries[idx]
+		cteToSubqueryMap = make(map[string]*core.InspectStatement)
+		for idx, cte := range ctes {
+			if idx < len(cteSubqueries) {
+				cteToSubqueryMap[i.dialect.NormalizeIdentifier(cte.Table)] = &cteSubqueries[idx]
+			}
 		}
-	}
-
-	result := &core.InspectStatement{
-		Operation:  core.InspectOpSelect,
-		Subqueries: cteSubqueries,
-	}
-	for _, sub := range cteSubqueries {
-		result.Tables = core.MergeInspectTables(result.Tables, sub.Tables)
+		result.Subqueries = cteSubqueries
+		for _, sub := range cteSubqueries {
+			result.Tables = core.MergeInspectTables(result.Tables, sub.Tables)
+		}
 	}
 
 	for _, selectCore := range selectCores {
@@ -421,7 +433,7 @@ func (i *Inspector) inspectSelect(selectStmt sqlite.ISelect_stmtContext) *core.I
 	// their own. See compoundGroup.
 	group := i.takeCompoundBranches(selectStmt)
 	tailClauses := selectStmt
-	if last := i.mergeCompoundBranches(result, group.branches); last != nil {
+	if last := i.mergeCompoundBranches(result, group.branches, ctes, cteSubqueries, cteToSubqueryMap); last != nil {
 		tailClauses = last
 	}
 
