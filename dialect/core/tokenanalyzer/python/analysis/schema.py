@@ -6,6 +6,7 @@ from __future__ import annotations
 from sqlglot import exp
 from sqlglot.dialects.dialect import Dialect as SqlglotDialect
 from sqlglot.errors import TokenError
+from sqlglot.optimizer.scope import Scope, ScopeType, traverse_scope
 from sqlglot.schema import MappingSchema
 
 # Map Go dialect names → sqlglot dialect names
@@ -178,3 +179,79 @@ def collect_virtual_names(stmt: exp.Expression) -> set[str]:
         for cte in with_clause.expressions:
             virtuals.add(cte.alias.lower())
     return virtuals
+
+
+def cte_name_for(source) -> str:
+    """The CTE name a scope is, when it is one (handling both direct and recursive CTEs)."""
+    expression = getattr(source, "expression", None)
+    if expression is None:
+        return ""
+    p = expression.parent
+    if isinstance(p, exp.CTE):
+        return p.alias
+    if isinstance(p, exp.SetOperation) and isinstance(p.parent, exp.CTE):
+        return p.parent.alias
+    return ""
+
+
+def _cte_lookup_key(ident: exp.Expression | str | None, dialect: SqlglotDialect) -> str:
+    if isinstance(ident, exp.Identifier):
+        return dialect.normalize_identifier(ident.copy()).name
+    if isinstance(ident, str):
+        return dialect.normalize_identifier(exp.Identifier(this=ident, quoted=False)).name
+    return ""
+
+
+def traverse_scopes(stmt: exp.Expression, sg_dialect: str = "postgres") -> list[Scope]:
+    """Run sqlglot's traverse_scope and bind FROM/JOIN tables to CTEs using
+    the dialect's identifier normalization rules.
+
+    sqlglot's _traverse_tables matches table names against scope.sources by
+    exact string equality, which misses a CTE referenced in a different case
+    on PostgreSQL (folds unquoted identifiers to lower case) or SQLite
+    (case-insensitive identifiers).
+    """
+    scopes = list(traverse_scope(stmt))
+    try:
+        dialect = SqlglotDialect.get_or_raise(sg_dialect or "postgres")
+    except Exception:
+        return scopes
+
+    for scope in scopes:
+        if not scope.cte_sources:
+            continue
+        norm_ctes: dict[str, Scope] = {}
+        for cte_alias, cte_scope in scope.cte_sources.items():
+            expr = getattr(cte_scope, "expression", None)
+            p = expr.parent if expr is not None else None
+            cte_node = p if isinstance(p, exp.CTE) else (p.parent if isinstance(p, exp.SetOperation) and isinstance(p.parent, exp.CTE) else None)
+            alias_arg = cte_node.args.get("alias") if isinstance(cte_node, exp.CTE) else None
+            cte_ident = (
+                alias_arg.this
+                if isinstance(alias_arg, exp.TableAlias) and isinstance(alias_arg.this, exp.Identifier)
+                else cte_alias
+            )
+            key = _cte_lookup_key(cte_ident, dialect)
+            if key:
+                norm_ctes[key] = cte_scope
+
+        if not norm_ctes:
+            continue
+
+        changed = False
+        for source_key, source in list(scope.sources.items()):
+            if (
+                isinstance(source, exp.Table)
+                and not source.db
+                and not source.catalog
+                and not source.args.get("pivots")
+            ):
+                tbl_ident = source.this if isinstance(source.this, exp.Identifier) else source.name
+                matched = norm_ctes.get(_cte_lookup_key(tbl_ident, dialect))
+                if matched is not None:
+                    scope.sources[source_key] = matched
+                    changed = True
+        if changed:
+            scope._selected_sources = None
+
+    return scopes

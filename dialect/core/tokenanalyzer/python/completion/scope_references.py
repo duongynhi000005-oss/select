@@ -17,7 +17,7 @@ from sqlglot import exp
 from sqlglot.optimizer.scope import Scope, ScopeType, traverse_scope
 from sqlglot.tokens import TokenType
 
-from analysis.schema import pos, span, tokenize
+from analysis.schema import pos, span, tokenize, traverse_scopes
 
 
 class _ScopeBounds:
@@ -137,7 +137,7 @@ def collect_references(
         if stmt is None:
             continue
         try:
-            scopes = list(traverse_scope(stmt))
+            scopes = traverse_scopes(stmt, sg_dialect)
         except Exception:
             scopes = []
 
@@ -177,7 +177,8 @@ def _collect_from_scopes(
     cte_ranges: dict[str, tuple[int, int]] = {}  # cte_name -> (open_paren_offset, close_paren_offset)
     for scope in scopes:
         if scope.scope_type == ScopeType.CTE:
-            cte_node = scope.expression.parent
+            p = scope.expression.parent if scope.expression is not None else None
+            cte_node = p if isinstance(p, exp.CTE) else (p.parent if isinstance(p, exp.SetOperation) and isinstance(p.parent, exp.CTE) else None)
             if isinstance(cte_node, exp.CTE):
                 cte_name = cte_node.alias
                 if cte_name:
@@ -262,7 +263,8 @@ def _collect_from_scopes(
 
         # Add the CTE's own vtab: scope starts after closing paren, nesting=0
         if scope.scope_type == ScopeType.CTE:
-            cte_parent = scope.expression.parent
+            p = scope.expression.parent if scope.expression is not None else None
+            cte_parent = p if isinstance(p, exp.CTE) else (p.parent if isinstance(p, exp.SetOperation) and isinstance(p.parent, exp.CTE) else None)
             if isinstance(cte_parent, exp.CTE):
                 cte_name = cte_parent.alias.lower() if cte_parent.alias else ""
                 if cte_name and cte_name in cte_defs and cte_name not in seen_vtabs:
@@ -421,8 +423,14 @@ def _cte_name_for(source) -> str:
     by its alias, which does not say which CTE it names.
     """
     expression = getattr(source, "expression", None)
-    owner = expression.parent if expression is not None else None
-    return owner.alias if isinstance(owner, exp.CTE) else ""
+    if expression is None:
+        return ""
+    p = expression.parent
+    if isinstance(p, exp.CTE):
+        return p.alias
+    if isinstance(p, exp.SetOperation) and isinstance(p.parent, exp.CTE):
+        return p.parent.alias
+    return ""
 
 
 def _dml_sources(source: exp.Expression):

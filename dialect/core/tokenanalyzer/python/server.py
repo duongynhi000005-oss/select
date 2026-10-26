@@ -117,12 +117,12 @@ def _collect_column_refs(req: dict) -> dict:
     from completion.column_resolution import collect_resolved_column_refs, collect_column_aliases
 
     for_completion = "caret_line" in req
-    sql, stmts, schema_dict, default_schema, _ = _prepare_sql(req, for_completion=for_completion)
+    sql, stmts, schema_dict, default_schema, sg_dialect = _prepare_sql(req, for_completion=for_completion)
     if not stmts:
         return {"column_refs": [], "column_aliases": []}
     return {
-        "column_refs":    collect_resolved_column_refs(stmts, schema_dict, default_schema),
-        "column_aliases": collect_column_aliases(stmts, schema_dict, default_schema),
+        "column_refs":    collect_resolved_column_refs(stmts, schema_dict, default_schema, sg_dialect),
+        "column_aliases": collect_column_aliases(stmts, schema_dict, default_schema, sg_dialect),
     }
 
 

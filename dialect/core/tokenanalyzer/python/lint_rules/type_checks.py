@@ -45,7 +45,11 @@ def analyze_type_mismatches(
             })
 
     try:
-        qualified = qualify_columns.qualify_columns(stmt.copy(), schema=schema, dialect=sg_dialect)
+        norm_stmt = stmt.copy()
+        if sg_dialect in ("postgres", "postgresql", "sqlite"):
+            from sqlglot.optimizer import normalize_identifiers
+            norm_stmt = normalize_identifiers.normalize_identifiers(norm_stmt, dialect=sg_dialect)
+        qualified = qualify_columns.qualify_columns(norm_stmt, schema=schema, dialect=sg_dialect)
         annotated = annotate_types.annotate_types(qualified, schema=schema, dialect=sg_dialect)
     except Exception:
         return []  # incomplete SQL or unresolvable refs, skip type analysis

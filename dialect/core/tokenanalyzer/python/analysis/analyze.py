@@ -27,7 +27,7 @@ from lint_rules.references import (
     analyze_update_columns,
     names_changed,
 )
-from analysis.schema import build_schema, collect_virtual_names, sqlglot_dialect_name
+from analysis.schema import build_schema, collect_virtual_names, sqlglot_dialect_name, traverse_scopes
 from lint_rules.structure import (
     analyze_duplicate_columns,
     analyze_ordinal_violations,
@@ -207,7 +207,7 @@ def analyze(
             continue
 
         try:
-            scopes = list(traverse_scope(stmt))
+            scopes = traverse_scopes(stmt, sg_dialect)
         except Exception as e:
             result["parse_errors"].append({"message": f"Scope error: {e}", "line": 1, "col": 0})
             scopes = []

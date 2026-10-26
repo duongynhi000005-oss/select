@@ -10,13 +10,14 @@ from __future__ import annotations
 from sqlglot import exp
 from sqlglot.optimizer.scope import Scope, ScopeType, traverse_scope
 
-from analysis.schema import span
+from analysis.schema import cte_name_for, span, traverse_scopes
 
 
 def collect_resolved_column_refs(
     stmts: list,
     schema_dict: dict,
     default_schema: str,
+    sg_dialect: str = "postgres",
 ) -> list[dict]:
     """Collect column references with resolution status from all scopes."""
     results: list[dict] = []
@@ -25,7 +26,7 @@ def collect_resolved_column_refs(
         if stmt is None:
             continue
         try:
-            scopes = list(traverse_scope(stmt))
+            scopes = traverse_scopes(stmt, sg_dialect)
         except Exception:
             continue
 
@@ -65,6 +66,7 @@ def collect_column_aliases(
     stmts: list,
     schema_dict: dict,
     default_schema: str,
+    sg_dialect: str = "postgres",
 ) -> list[dict]:
     """Extract SELECT-list aliases with type info for completion."""
     results: list[dict] = []
@@ -73,7 +75,7 @@ def collect_column_aliases(
         if stmt is None:
             continue
         try:
-            scopes = list(traverse_scope(stmt))
+            scopes = traverse_scopes(stmt, sg_dialect)
         except Exception:
             continue
 
@@ -119,26 +121,35 @@ def _build_cte_column_map(
     for scope in scopes:
         if scope.scope_type != ScopeType.CTE:
             continue
-        cte_node = scope.expression.parent
+        p = scope.expression.parent if scope.expression is not None else None
+        cte_node = p if isinstance(p, exp.CTE) else (p.parent if isinstance(p, exp.SetOperation) and isinstance(p.parent, exp.CTE) else None)
         if not isinstance(cte_node, exp.CTE):
             continue
         cte_name = (cte_node.alias or "").lower()
         if not cte_name:
             continue
 
+        alias_cols = cte_node.alias_column_names
         cols: list[tuple[str, str]] = []
-        source_tables = _physical_source_map(scope, default_schema)
+        if alias_cols:
+            cols = [(cname, "UNKNOWN") for cname in alias_cols]
 
-        for sel in scope.expression.selects:
-            if isinstance(sel, exp.Star):
-                # Expand * from physical sources
-                for _, (schema, table) in source_tables.items():
-                    for col_name, col_type in schema_dict.get(schema, {}).get(table, {}).items():
-                        cols.append((col_name, col_type))
-                break
-            col_name, col_type = _select_item_name_type(sel, source_tables, schema_dict, cte_cols)
-            if col_name:
-                cols.append((col_name, col_type))
+        select_node = scope.expression if isinstance(scope.expression, exp.Select) else scope.expression.find(exp.Select)
+        if select_node:
+            source_tables = _physical_source_map(scope, default_schema)
+            for idx, sel in enumerate(select_node.selects):
+                if isinstance(sel, exp.Star):
+                    # Expand * from physical sources
+                    for _, (schema, table) in source_tables.items():
+                        for col_name, col_type in schema_dict.get(schema, {}).get(table, {}).items():
+                            if not alias_cols:
+                                cols.append((col_name, col_type))
+                    break
+                col_name, col_type = _select_item_name_type(sel, source_tables, schema_dict, cte_cols)
+                if idx < len(cols):
+                    cols[idx] = (cols[idx][0], col_type)
+                elif not alias_cols and col_name:
+                    cols.append((col_name, col_type))
 
         cte_cols[cte_name] = cols
 
@@ -166,12 +177,16 @@ def _visible_columns(
             visible[""].update(col_names)
 
         elif isinstance(source, Scope):
-            cte_name = alias_lower
-            if cte_name in cte_columns:
-                col_names = {c[0].lower() for c in cte_columns[cte_name]}
+            real_name = cte_name_for(source).lower()
+            if alias_lower in cte_columns:
+                col_names = {c[0].lower() for c in cte_columns[alias_lower]}
+            elif real_name and real_name in cte_columns:
+                col_names = {c[0].lower() for c in cte_columns[real_name]}
             else:
                 col_names = _infer_scope_columns(source, schema_dict, default_schema, cte_columns)
             visible[alias_lower] = col_names
+            if real_name:
+                visible[real_name] = col_names
             visible[""].update(col_names)
 
     return visible
