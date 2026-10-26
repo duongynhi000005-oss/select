@@ -4329,5 +4329,52 @@ func permCases() []PermCase {
 			Needs: []Right{Manage, mainT1(core.ActionDelete)},
 			Why:   "inside a body a bare name may be a variable the body declared, and the body already takes manage",
 		},
+		{
+			On:   []string{"sqlite"},
+			Name: "an insert from a SQLite ordered aggregate reads both the aggregated and ordering columns",
+			SQL:  "INSERT INTO t2 (c3) SELECT group_concat(c4 ORDER BY c1) FROM other.t3",
+			Needs: []Right{
+				mainT2(core.ActionInsert).Only("c3"),
+				otherT3(core.ActionSelect).Only("c4"),
+				otherT3(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpInsert,
+			Why: "the ordered aggregate is valid SQLite 3.44+ syntax, and copying it into t2 reads both c4 and c1 of other.t3",
+		},
+		{
+			On:   []string{"sqlite"},
+			Name: "CREATE TABLE AS from a SQLite ordered aggregate reads the source columns",
+			SQL:  "CREATE TABLE t9 AS SELECT group_concat(c1, ',' ORDER BY c2) AS g FROM t1",
+			Needs: []Right{
+				Manage,
+				mainT1(core.ActionSelect).Only("c1"),
+				mainT1(core.ActionSelect).Only("c2"),
+			},
+			Op:  core.InspectOpCreate,
+			Why: "manage alone must not copy t1 into a new table without select on the columns the ordered aggregate reads",
+		},
+		{
+			On:   []string{"sqlite"},
+			Name: "a select with a SQLite ordered aggregate reads the aggregated and ordering columns",
+			SQL:  "SELECT group_concat(c1, ',' ORDER BY c2), string_agg(c1, ',' ORDER BY c2), json_group_array(c1 ORDER BY c2 DESC) FROM t1",
+			Needs: []Right{
+				mainT1(core.ActionSelect).Only("c1"),
+				mainT1(core.ActionSelect).Only("c2"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "all three ordered aggregate calls read c1 and order by c2 without requiring manage",
+		},
+		{
+			On:   []string{"sqlite"},
+			Name: "an update from a subquery with a SQLite ordered aggregate reads the subquery columns",
+			SQL:  "UPDATE t2 SET c3 = (SELECT group_concat(c1, ',' ORDER BY c2) FROM t1)",
+			Needs: []Right{
+				mainT2(core.ActionUpdate).Only("c3"),
+				mainT1(core.ActionSelect).Only("c1"),
+				mainT1(core.ActionSelect).Only("c2"),
+			},
+			Op:  core.InspectOpUpdate,
+			Why: "the scalar subquery reads c1 and c2 of t1 to compute the value written to t2.c3",
+		},
 	}
 }

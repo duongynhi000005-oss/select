@@ -279,7 +279,7 @@ expr
     ) expr
     | expr AND_ expr
     | expr OR_ expr
-    | function_name OPEN_PAR ((DISTINCT_? expr ( COMMA expr)*) | STAR)? CLOSE_PAR filter_clause? over_clause?
+    | function_name OPEN_PAR ((DISTINCT_? expr ( COMMA expr)* order_by_stmt?) | STAR)? CLOSE_PAR filter_clause? over_clause?
     | OPEN_PAR expr (COMMA expr)* CLOSE_PAR
     | CAST_ OPEN_PAR expr AS_ type_name CLOSE_PAR
     | expr COLLATE_ collation_name
@@ -504,7 +504,7 @@ simple_function_invocation
 ;
 
 aggregate_function_invocation
-    : aggregate_func OPEN_PAR (DISTINCT_? expr (COMMA expr)* | STAR)? CLOSE_PAR filter_clause?
+    : aggregate_func OPEN_PAR (DISTINCT_? expr (COMMA expr)* order_by_stmt? | STAR)? CLOSE_PAR filter_clause?
 ;
 
 window_function_invocation
