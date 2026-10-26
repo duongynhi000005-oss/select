@@ -498,7 +498,7 @@ func (i *Inspector) branchClauseFields(spec mysql.IQuerySpecificationContext, re
 // FILTER clause.
 func (i *Inspector) overAndFilterFields(tree antlr.Tree, refs []core.RelationRef, scope core.Scope) []core.InspectField {
 	var fields []core.InspectField
-	for _, over := range core.CollectNodes[mysql.IWindowingClauseContext](tree) {
+	for _, over := range core.CollectOutside[mysql.IWindowingClauseContext, mysql.ISubqueryContext](tree) {
 		fields = core.MergeInspectFields(fields, i.testedFields(over, refs, scope))
 	}
 	return fields

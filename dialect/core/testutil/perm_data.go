@@ -4329,5 +4329,49 @@ func permCases() []PermCase {
 			Needs: []Right{Manage, mainT1(core.ActionDelete)},
 			Why:   "inside a body a bare name may be a variable the body declared, and the body already takes manage",
 		},
+		{
+			On:   []string{"postgresql", "sqlite"},
+			Name: "a FILTER clause inside a WHERE subquery is scoped to the subquery",
+			SQL:  "SELECT c3 FROM t2 WHERE c3 IN (SELECT count(*) FILTER (WHERE c2 > 0) FROM t1)",
+			Needs: []Right{
+				mainT2(core.ActionSelect).Only("c3"),
+				mainT1(core.ActionSelect).Only("c2"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "the FILTER clause belongs to the subquery over t1, so c2 is resolved against t1 alone",
+		},
+		{
+			On:   []string{"postgresql", "sqlite"},
+			Name: "a FILTER clause on a shared column name inside a WHERE subquery is scoped to the subquery",
+			SQL:  "SELECT c3 FROM t2 WHERE c3 IN (SELECT count(*) FILTER (WHERE c1 > 0) FROM t1)",
+			Needs: []Right{
+				mainT2(core.ActionSelect).Only("c3"),
+				mainT1(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "c1 inside the subquery's FILTER binds to the innermost scope t1, not the outer t2",
+		},
+		{
+			On:   []string{"postgresql", "sqlite"},
+			Name: "a FILTER clause inside a scalar subquery in the select list is scoped to the subquery",
+			SQL:  "SELECT c3, (SELECT count(*) FILTER (WHERE c2 > 0) FROM t1) FROM t2",
+			Needs: []Right{
+				mainT2(core.ActionSelect).Only("c3"),
+				mainT1(core.ActionSelect).Only("c2"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "the scalar subquery inspects its own FILTER clause against t1 without leaking c2 onto t2",
+		},
+		{
+			Name: "an inline OVER clause inside a WHERE subquery is scoped to the subquery",
+			SQL:  "SELECT c3 FROM t2 WHERE c3 IN (SELECT sum(c1) OVER (PARTITION BY c2 ORDER BY c2) FROM t1)",
+			Needs: []Right{
+				mainT2(core.ActionSelect).Only("c3"),
+				mainT1(core.ActionSelect).Only("c1"),
+				mainT1(core.ActionSelect).Only("c2"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "the inline OVER clause belongs to the subquery over t1, so c2 is not charged to the outer t2",
+		},
 	}
 }

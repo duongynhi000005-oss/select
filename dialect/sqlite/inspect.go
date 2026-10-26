@@ -565,10 +565,10 @@ func (i *Inspector) branchClauseFields(selectCore sqlite.ISelect_coreContext, re
 // name is tested even where the column itself is never returned.
 func (i *Inspector) overAndFilterFields(tree antlr.Tree, refs []core.RelationRef, scope core.Scope) []core.InspectField {
 	var fields []core.InspectField
-	for _, over := range core.CollectNodes[sqlite.IOver_clauseContext](tree) {
+	for _, over := range core.CollectOutside[sqlite.IOver_clauseContext, sqlite.ISelect_stmtContext](tree) {
 		fields = core.MergeInspectFields(fields, i.testedFields(over, refs, scope))
 	}
-	for _, filter := range core.CollectNodes[sqlite.IFilter_clauseContext](tree) {
+	for _, filter := range core.CollectOutside[sqlite.IFilter_clauseContext, sqlite.ISelect_stmtContext](tree) {
 		fields = core.MergeInspectFields(fields, i.testedFields(filter, refs, scope))
 	}
 	return fields

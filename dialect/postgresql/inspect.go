@@ -508,10 +508,10 @@ func (i *Inspector) branchClauseFields(primary pg.ISimple_select_pramaryContext,
 // name is tested even where the column itself is never returned.
 func (i *Inspector) overAndFilterFields(tree antlr.Tree, refs []core.RelationRef, scope core.Scope) []core.InspectField {
 	var fields []core.InspectField
-	for _, over := range core.CollectNodes[pg.IOver_clauseContext](tree) {
+	for _, over := range core.CollectOutside[pg.IOver_clauseContext, pg.ISelect_with_parensContext](tree) {
 		fields = core.MergeInspectFields(fields, i.testedFields(over, refs, scope))
 	}
-	for _, filter := range core.CollectNodes[pg.IFilter_clauseContext](tree) {
+	for _, filter := range core.CollectOutside[pg.IFilter_clauseContext, pg.ISelect_with_parensContext](tree) {
 		fields = core.MergeInspectFields(fields, i.testedFields(filter, refs, scope))
 	}
 	return fields
