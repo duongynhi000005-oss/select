@@ -82,7 +82,7 @@ func (r Resolver) SchemaFor(schema, table string) string {
 func (r Resolver) Tables(refs []RelationRef, s Scope) []InspectTable {
 	virtual := r.virtualNames(s)
 	var tables []InspectTable
-	seen := make(map[string]bool)
+	seen := make(map[string]int)
 
 	for _, ref := range DropVirtualRefs(refs, virtual, r.Dialect.NormalizeIdentifier) {
 		if ref.Schema == "" && ref.Table == "" {
@@ -95,10 +95,13 @@ func (r Resolver) Tables(refs []RelationRef, s Scope) []InspectTable {
 		}
 
 		key := schema + "." + ref.Table
-		if seen[key] {
+		if idx, ok := seen[key]; ok {
+			if ref.Qualified {
+				tables[idx].Bare = false
+			}
 			continue
 		}
-		seen[key] = true
+		seen[key] = len(tables)
 
 		table := InspectTable{
 			Name:      ref.Table,

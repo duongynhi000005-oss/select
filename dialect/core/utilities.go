@@ -544,8 +544,11 @@ func ContainsIdentifier(text, identifier string, normalizer func(string) string)
 func MergeInspectTables(tables []InspectTable, newTables []InspectTable) []InspectTable {
 	for _, newTable := range newTables {
 		found := false
-		for _, t := range tables {
-			if t.Name == newTable.Name && t.Schema == newTable.Schema {
+		for i := range tables {
+			if tables[i].Name == newTable.Name && tables[i].Schema == newTable.Schema {
+				if !newTable.Bare {
+					tables[i].Bare = false
+				}
 				found = true
 				break
 			}

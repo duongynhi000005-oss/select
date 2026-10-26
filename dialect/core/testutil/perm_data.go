@@ -4329,5 +4329,53 @@ func permCases() []PermCase {
 			Needs: []Right{Manage, mainT1(core.ActionDelete)},
 			Why:   "inside a body a bare name may be a variable the body declared, and the body already takes manage",
 		},
+		{
+			Name: "a schema-qualified table read after a same-named CTE in a CTE body UNION ALL",
+			SQL:  "WITH t1 AS (SELECT 1 AS c1), w AS (SELECT c1 FROM t1 UNION ALL SELECT c1 FROM main.t1) SELECT c1 FROM w",
+			Needs: []Right{
+				mainT1(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "main.t1 is schema-qualified, so reading the bare CTE t1 in an earlier branch does not drop the catalog table",
+		},
+		{
+			Name: "a schema-qualified table joined after a same-named CTE in a CTE body",
+			SQL:  "WITH t1 AS (SELECT 1 AS c1), w AS (SELECT main.t1.c2 FROM t1 JOIN main.t1 ON main.t1.c1 = t1.c1) SELECT c2 FROM w",
+			Needs: []Right{
+				mainT1(core.ActionSelect).Only("c1"),
+				mainT1(core.ActionSelect).Only("c2"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "joining bare t1 and qualified main.t1 in the same query block still reads main.t1 from the catalog",
+		},
+		{
+			Name: "a schema-qualified table read after a same-named CTE in a derived table",
+			SQL:  "WITH t1 AS (SELECT 1 AS c1) SELECT z.c1 FROM (SELECT c1 FROM t1 UNION ALL SELECT c1 FROM main.t1) z",
+			Needs: []Right{
+				mainT1(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "stripping the outer CTE from the derived table must preserve the schema-qualified read of main.t1",
+		},
+		{
+			Name: "a schema-qualified table read after a same-named CTE in an IN subquery",
+			SQL:  "WITH t1 AS (SELECT 1 AS c1) SELECT c1 FROM t2 WHERE c1 IN (SELECT c1 FROM t1 UNION SELECT c1 FROM main.t1)",
+			Needs: []Right{
+				mainT2(core.ActionSelect).Only("c1"),
+				mainT1(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "the IN subquery reads main.t1 in its second branch even though the first branch reads the CTE t1",
+		},
+		{
+			Name: "a schema-qualified table read after a table-backed same-named CTE in a CTE body",
+			SQL:  "WITH t1 AS (SELECT c1 FROM t2), w AS (SELECT c1 FROM t1 UNION ALL SELECT c1 FROM main.t1) SELECT c1 FROM w",
+			Needs: []Right{
+				mainT2(core.ActionSelect).Only("c1"),
+				mainT1(core.ActionSelect).Only("c1"),
+			},
+			Op:  core.InspectOpSelect,
+			Why: "both the table backing the CTE t1 and the schema-qualified main.t1 are read",
+		},
 	}
 }
