@@ -268,12 +268,14 @@ func pickFunctionByName(meta *core.Metadata, w string) *core.Function {
 // This handles queries like `FROM accounts aa ON aa."col"` where the vtab is named
 // "accounts" but the qualifier in the query is the alias "aa".
 func virtualTableForQualifier(vtabs, refs []core.RelationRef, qualifier string, caretIdx int, norm func(string) string) *core.RelationRef {
+	if r := coreRefs.RelationRefForQualifier(refs, qualifier, caretIdx, norm); r != nil {
+		if r.Schema != "" {
+			return nil
+		}
+		return coreRefs.VirtualTableForQualifier(vtabs, r.Table, caretIdx, norm)
+	}
 	if vt := coreRefs.VirtualTableForQualifier(vtabs, qualifier, caretIdx, norm); vt != nil {
 		return vt
-	}
-	// Try alias → CTE name translation via physical refs.
-	if r := coreRefs.RelationRefForQualifier(refs, qualifier, caretIdx, norm); r != nil {
-		return coreRefs.VirtualTableForQualifier(vtabs, r.Table, caretIdx, norm)
 	}
 	return nil
 }

@@ -714,17 +714,7 @@ func (cs *CompletionStrategy) completeColumnsForTable(
 	targetNormalized := normalize(targetTable)
 	var columns []Candidate
 
-	// 1. First check if target matches a RelationRef (CTE or subquery) directly
-	for _, cte := range filteredCteTables {
-		if normalize(cte.Table) == targetNormalized {
-			for _, col := range cte.Columns {
-				columns = append(columns, cs.buildColumnCandidate(col, "", targetTable, nil, caretQuoted, reservedKeywords))
-			}
-			return columns
-		}
-	}
-
-	// 2. Check aliases and table names in filtered refs, then all refs
+	// 1. Check aliases and table names in filtered refs, then all refs
 	for _, refSet := range [][]RelationRef{filteredRefs, allRefs} {
 		for _, ref := range refSet {
 			// Check if target matches alias or table name
@@ -735,12 +725,14 @@ func (cs *CompletionStrategy) completeColumnsForTable(
 			refKeyNormalized := normalize(refKey)
 			if refKeyNormalized == targetNormalized {
 				// Check if this ref points to a CTE/subquery
-				for _, cte := range filteredCteTables {
-					if normalize(cte.Table) == normalize(ref.Table) || normalize(cte.Table) == normalize(ref.Alias) {
-						for _, col := range cte.Columns {
-							columns = append(columns, cs.buildColumnCandidate(col, "", targetTable, nil, caretQuoted, reservedKeywords))
+				if ref.Schema == "" {
+					for _, cte := range filteredCteTables {
+						if normalize(cte.Table) == normalize(ref.Table) || normalize(cte.Table) == normalize(ref.Alias) {
+							for _, col := range cte.Columns {
+								columns = append(columns, cs.buildColumnCandidate(col, "", targetTable, nil, caretQuoted, reservedKeywords))
+							}
+							return columns
 						}
-						return columns
 					}
 				}
 				// Use columns from metadata - use ref.Table (actual table) not the alias
@@ -765,6 +757,16 @@ func (cs *CompletionStrategy) completeColumnsForTable(
 				}
 				// No columns found for this ref, continue to next ref
 			}
+		}
+	}
+
+	// 2. Check if target matches a virtual table (CTE or subquery) directly
+	for _, cte := range filteredCteTables {
+		if normalize(cte.Table) == targetNormalized {
+			for _, col := range cte.Columns {
+				columns = append(columns, cs.buildColumnCandidate(col, "", targetTable, nil, caretQuoted, reservedKeywords))
+			}
+			return columns
 		}
 	}
 
@@ -820,10 +822,12 @@ func (cs *CompletionStrategy) completeColumnsUnqualified(
 		}
 	}
 	for _, cte := range filteredCteTables {
-		tableInfoMap[cte.Table] = TableInfo{
-			OriginalSchema: "",
-			OriginalTable:  cte.Table,
-			IsAlias:        true,
+		if _, exists := tableInfoMap[cte.Table]; !exists {
+			tableInfoMap[cte.Table] = TableInfo{
+				OriginalSchema: "",
+				OriginalTable:  cte.Table,
+				IsAlias:        true,
+			}
 		}
 		allTableKeys[cte.Table] = true
 	}
@@ -979,8 +983,10 @@ func (cs *CompletionStrategy) getColumnsForRef(
 	cteMap map[string]*RelationRef,
 	meta Metadata,
 ) []Column {
-	if vt, ok := cteMap[ref.Table]; ok {
-		return vt.Columns
+	if ref.Schema == "" {
+		if vt, ok := cteMap[ref.Table]; ok {
+			return vt.Columns
+		}
 	}
 	return ListColumns(meta, ref.Schema, ref.Table)
 }

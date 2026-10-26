@@ -517,22 +517,24 @@ def _collect_dml_target(
                 )
 
     # Build set of tables captured by ROOT scopes (not CTE-internal tables)
-    scoped_tables: set[str] = set()
+    scoped_tables: set[tuple[str, str]] = set()
     for s in scopes:
         if s.scope_type not in (ScopeType.ROOT, ScopeType.UNION):
             continue
         for _, source in s.sources.items():
             if isinstance(source, exp.Table):
-                scoped_tables.add(source.name.lower())
+                scoped_tables.add(((source.db or default_schema).lower(), source.name.lower()))
 
     insert_at = len(relations) if insert_index is None else insert_index
     for tbl in tables_to_add:
         table_name = tbl.name
-        if not table_name or table_name.lower() in scoped_tables:
+        if not table_name:
             continue
 
-        is_cte = table_name.lower() in cte_names
+        is_cte = not tbl.db and table_name.lower() in cte_names
         schema_name = "" if is_cte else (tbl.db or default_schema)
+        if (schema_name.lower(), table_name.lower()) in scoped_tables:
+            continue
         alias_str = tbl.alias or ""
         if alias_str.lower() == table_name.lower():
             alias_str = ""
